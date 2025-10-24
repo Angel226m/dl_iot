@@ -3,7 +3,7 @@ version: '3.8'
 services:
   crackguard-backend:
     build:
-      context: ./backend
+      context: ./Backend
       dockerfile: Dockerfile
     container_name: crackguard-backend
     environment:
@@ -14,10 +14,10 @@ services:
       - MAX_CONTENT_LENGTH=20971520
       - CORS_ORIGIN=https://crackguard.angelproyect.com
     ports:
-      - "127.0.0.1:5001:5000"  # Puerto 5001 para no chocar con otros servicios
+      - "127.0.0.1:5001:5000"
     volumes:
-      - ./backend/model:/app/model:ro
-      - ./backend/uploads:/app/uploads
+      - ./Backend/model:/app/model:ro
+      - ./Backend/uploads:/app/uploads
       - crackguard_results:/app/results
     restart: unless-stopped
     networks:
@@ -31,13 +31,13 @@ services:
 
   crackguard-frontend:
     build:
-      context: ./frontend
+      context: ./Frontend
       dockerfile: Dockerfile
       args:
         - VITE_API_URL=/api
     container_name: crackguard-frontend
     ports:
-      - "127.0.0.1:3001:80"  # Puerto 3001 para no chocar
+      - "127.0.0.1:3001:80"
     depends_on:
       - crackguard-backend
     restart: unless-stopped
@@ -55,7 +55,7 @@ networks:
     driver: bridge
     ipam:
       config:
-        - subnet: 172.32.0.0/16  # Subnet diferente para evitar conflictos
+        - subnet: 172.32.0.0/16
 
 volumes:
   crackguard_results:

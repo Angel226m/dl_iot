@@ -19,22 +19,20 @@ jobs:
       uses: actions/setup-node@v3
       with:
         node-version: '18'
-        cache: 'npm'
-        cache-dependency-path: frontend/package-lock.json
         
     - name: Instalar dependencias frontend
       run: |
-        cd frontend
+        cd Frontend
         npm ci
         
     - name: Verificar tipos TypeScript
       run: |
-        cd frontend
+        cd Frontend
         npm run build || echo "⚠️  Build con warnings - continuando..."
         
     - name: Linting (si existe)
       run: |
-        cd frontend
+        cd Frontend
         if grep -q '"lint":' package.json; then
           npm run lint || echo "⚠️  Linting con warnings - continuando..."
         else
@@ -53,22 +51,21 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: '3.10'
-        cache: 'pip'
     
     - name: Instalar dependencias backend
       run: |
-        cd backend
+        cd Backend
         pip install --upgrade pip
         pip install -r requirements.txt
         
     - name: Verificar sintaxis Python
       run: |
-        cd backend
+        cd Backend
         python -m py_compile app.py || echo "⚠️  Advertencias en código - continuando..."
         
     - name: Test de importación de módulos
       run: |
-        cd backend
+        cd Backend
         python -c "import flask; import torch; import transformers; print('✓ Módulos principales OK')"
 
   build-images:
@@ -86,12 +83,12 @@ jobs:
     
     - name: Build Frontend Image
       run: |
-        cd frontend
+        cd Frontend
         docker build -t crackguard-frontend:latest . || echo "⚠️  Frontend build con warnings"
     
     - name: Build Backend Image
       run: |
-        cd backend
+        cd Backend
         docker build -t crackguard-backend:latest . || echo "⚠️  Backend build con warnings"
     
     - name: Verificar imágenes creadas
@@ -129,11 +126,12 @@ jobs:
           rsync -avz -e "ssh -i ~/.ssh/id_rsa" \
             --exclude 'node_modules' \
             --exclude '.git' \
-            --exclude 'backend/__pycache__' \
-            --exclude 'backend/uploads' \
-            --exclude 'backend/results' \
-            --exclude 'frontend/dist' \
-            --exclude 'frontend/.vite' \
+            --exclude 'Backend/__pycache__' \
+            --exclude 'Backend/uploads' \
+            --exclude 'Backend/results' \
+            --exclude 'Frontend/dist' \
+            --exclude 'Frontend/.vite' \
+            --exclude 'Frontend/node_modules' \
             ./ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}:/home/${{ secrets.SERVER_USER }}/crackguard-iot/
       
       - name: Verificar archivos transferidos
@@ -178,7 +176,7 @@ jobs:
           ssh -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} \
             "sleep 10 && curl -f http://localhost:5001/health && echo '✓ Backend healthy'"
       
-      - name: Recargar Nginx (si está en el mismo servidor)
+      - name: Recargar Nginx
         run: |
           ssh -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} \
             "docker exec nginx-proxy nginx -t && docker exec nginx-proxy nginx -s reload || echo '⚠️  Nginx no encontrado o ya actualizado'"

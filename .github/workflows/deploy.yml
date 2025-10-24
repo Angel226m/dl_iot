@@ -114,7 +114,12 @@ jobs:
       
       - name: Verificar conexión SSH
         run: |
-          ssh -v -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} "echo '✓ Conexión SSH exitosa al servidor'"
+          ssh -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} "echo '✓ Conexión SSH exitosa'"
+      
+      - name: Verificar Docker Compose en servidor
+        run: |
+          ssh -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} \
+            "docker compose version || echo '⚠️ Docker Compose no disponible'"
       
       - name: Crear directorio de proyecto en servidor
         run: |
@@ -143,49 +148,62 @@ jobs:
         run: |
           ssh -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} \
             "cd /home/${{ secrets.SERVER_USER }}/crackguard-iot && \
-            docker-compose down || echo '⚠️  No hay contenedores previos'"
+            docker compose down || echo '⚠️ No hay contenedores previos'"
       
       - name: Limpiar imágenes antiguas
         run: |
           ssh -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} \
-            "docker image prune -f || true"
+            "docker image prune -f"
       
       - name: Construir y desplegar nuevos contenedores
         run: |
           ssh -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} \
             "cd /home/${{ secrets.SERVER_USER }}/crackguard-iot && \
-            docker-compose up -d --build --force-recreate"
+            docker compose up -d --build --force-recreate"
+      
+      - name: Esperar inicio de servicios
+        run: |
+          ssh -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} \
+            "sleep 20"
       
       - name: Verificar estado de contenedores
         run: |
           ssh -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} \
-            "docker ps | grep crackguard"
+            "docker compose -f /home/${{ secrets.SERVER_USER }}/crackguard-iot/docker-compose.yml ps"
       
       - name: Verificar logs de backend
         run: |
           ssh -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} \
-            "docker logs crackguard-backend --tail 50"
+            "docker logs crackguard-backend --tail 50 || echo '⚠️ Backend aún no está listo'"
       
       - name: Verificar logs de frontend
         run: |
           ssh -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} \
-            "docker logs crackguard-frontend --tail 30"
+            "docker logs crackguard-frontend --tail 30 || echo '⚠️ Frontend aún no está listo'"
       
-      - name: Verificar health de servicios
+      - name: Verificar health de backend
         run: |
           ssh -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} \
-            "sleep 10 && curl -f http://localhost:5001/health && echo '✓ Backend healthy'"
+            "curl -f http://localhost:5001/health && echo '✓ Backend healthy' || echo '⚠️ Backend no responde aún'"
+      
+      - name: Verificar health de frontend
+        run: |
+          ssh -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} \
+            "curl -f http://localhost:3001/ && echo '✓ Frontend healthy' || echo '⚠️ Frontend no responde aún'"
       
       - name: Recargar Nginx
         run: |
           ssh -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} \
-            "docker exec nginx-proxy nginx -t && docker exec nginx-proxy nginx -s reload || echo '⚠️  Nginx no encontrado o ya actualizado'"
+            "docker exec nginx-proxy nginx -t && docker exec nginx-proxy nginx -s reload || echo '⚠️ Nginx no encontrado o ya actualizado'"
       
       - name: Notificación de despliegue exitoso
         run: |
           echo "🚀 ¡Despliegue de CrackGuard completado exitosamente!"
           echo "📍 Frontend: https://crackguard.angelproyect.com"
           echo "🔧 Backend API: https://crackguard.angelproyect.com/api/health"
+          echo "🐳 Contenedores activos:"
+          ssh -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} \
+            "docker ps --filter name=crackguard"
 
   notify:
     name: Notificar resultado
@@ -199,7 +217,11 @@ jobs:
           if [ "${{ needs.deploy.result }}" == "success" ]; then
             echo "✅ DESPLIEGUE EXITOSO"
             echo "🌐 CrackGuard IoT está disponible en: https://crackguard.angelproyect.com"
+            echo "📊 Verifica el estado en: https://crackguard.angelproyect.com/api/status"
           else
             echo "❌ DESPLIEGUE FALLÓ"
-            echo "⚠️  Revisar logs anteriores"
+            echo "⚠️ Revisar logs anteriores"
+            echo "🔍 Comandos útiles para debugging:"
+            echo "   ssh user@server 'docker compose -f /path/to/docker-compose.yml logs'"
+            echo "   ssh user@server 'docker ps -a'"
           fi

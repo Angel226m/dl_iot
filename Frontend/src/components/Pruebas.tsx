@@ -92,82 +92,86 @@ const Pruebas = () => {
       setError('Error al simular captura de cámara')
     }
   }
-const analyzeImage = async () => {
-    if (!selectedFile) {
-      setError('No hay imagen seleccionada')
-      return
-    }
-
-    setIsProcessing(true)
-    setError(null)
-    setResult(null)
-    setProcessedImage(null)
-
-    try {
-      const formData = new FormData()
-      formData.append('image', selectedFile)
-      formData.append('use_tta', useTTA.toString())
-      formData.append('return_base64', 'true')  // ← SIEMPRE base64
-
-      console.log('🚀 Enviando a:', `${API_URL}/predict`)
-      console.log('📦 TTA:', useTTA)
-
-      const response = await fetch(`${API_URL}/predict`, {
-        method: 'POST',
-        body: formData,
-      })
-
-      console.log('📡 Response status:', response.status)
-
-      if (!response.ok) {
-        const contentType = response.headers.get('content-type')
-        if (contentType && contentType.includes('application/json')) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || 'Error en la predicción')
-        } else {
-          const text = await response.text()
-          console.error('❌ Response HTML:', text.substring(0, 500))
-          throw new Error('El servidor no respondió correctamente')
-        }
-      }
-
-      const data: PredictResponse = await response.json()
-      console.log('✅ Respuesta recibida:', {
-        success: data.success,
-        tiene_overlay: !!data.imagen_overlay,
-        tiene_result_image: !!data.result_image,
-        metricas: data.metricas
-      })
-      
-      if (!data.success) {
-        throw new Error(data.error || 'Error en la predicción')
-      }
-
-      setResult(data)
-
-      // Manejar imagen procesada (PRIORITARIAMENTE base64)
-      if (data.imagen_overlay) {
-        console.log('✅ Usando imagen_overlay (base64)')
-        setProcessedImage(data.imagen_overlay)
-      } else if (data.result_image) {
-        console.log('⚠️ Usando result_image (URL):', data.result_image)
-        // NO DUPLICAR /api/
-        const imageUrl = data.result_image.startsWith('/api/')
-          ? `${window.location.origin}${data.result_image}`
-          : `${API_URL}${data.result_image}`
-        setProcessedImage(imageUrl)
-      } else {
-        console.warn('⚠️ No se recibió ninguna imagen')
-      }
-
-    } catch (err) {
-      console.error('❌ Error completo:', err)
-      setError(err instanceof Error ? err.message : 'Error desconocido al analizar la imagen')
-    } finally {
-      setIsProcessing(false)
-    }
+  const analyzeImage = async () => {
+  if (!selectedFile) {
+    setError('No hay imagen seleccionada')
+    return
   }
 
+  setIsProcessing(true)
+  setError(null)
+  setResult(null)
+  setProcessedImage(null)
+
+  try {
+    const formData = new FormData()
+    formData.append('image', selectedFile)
+    formData.append('use_tta', useTTA.toString())
+    formData.append('return_base64', 'true')
+
+    console.log('🚀 Enviando a:', `${API_URL}/predict`)
+    console.log('📦 TTA:', useTTA)
+
+    const response = await fetch(`${API_URL}/predict`, {
+      method: 'POST',
+      body: formData,
+    })
+
+    console.log('📡 Response status:', response.status)
+
+    if (!response.ok) {
+      const contentType = response.headers.get('content-type')
+      if (contentType && contentType.includes('application/json')) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Error en la predicción')
+      } else {
+        const text = await response.text()
+        console.error('❌ Response HTML:', text.substring(0, 500))
+        throw new Error('El servidor no respondió correctamente')
+      }
+    }
+
+    const data: PredictResponse = await response.json()
+    console.log('✅ Respuesta recibida:', {
+      success: data.success,
+      tiene_overlay: !!data.imagen_overlay,
+      tiene_result_image: !!data.result_image,
+      metricas: data.metricas
+    })
+    
+    if (!data.success) {
+      throw new Error(data.error || 'Error en la predicción')
+    }
+
+    setResult(data)
+
+    // Manejar imagen procesada (PRIORITARIAMENTE base64)
+    if (data.imagen_overlay) {
+      console.log('✅ Usando imagen_overlay (base64)')
+      setProcessedImage(data.imagen_overlay)
+    } else if (data.result_image) {
+      console.log('⚠️ Usando result_image (URL):', data.result_image)
+      
+      // ✅ CORREGIDO: construir URL correctamente
+      // Si result_image viene como "/results/filename.jpg"
+      // Lo convertimos en "/api/results/filename.jpg"
+      const imageUrl = data.result_image.startsWith('/results/')
+        ? `/api${data.result_image}`  // /api/results/filename.jpg
+        : data.result_image  // Ya viene completo
+      
+      console.log('🖼️ URL final:', imageUrl)
+      setProcessedImage(imageUrl)
+    } else {
+      console.warn('⚠️ No se recibió ninguna imagen')
+    }
+
+  } catch (err) {
+    console.error('❌ Error completo:', err)
+    setError(err instanceof Error ? err.message : 'Error desconocido al analizar la imagen')
+  } finally {
+    setIsProcessing(false)
+  }
+}
   const resetTest = () => {
     setSelectedImage(null)
     setSelectedFile(null)

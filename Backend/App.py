@@ -1012,8 +1012,10 @@ def predict():
             result_path = os.path.join(config.RESULTS_FOLDER, result_filename)
             overlay_bgr = cv2.cvtColor(overlay, cv2.COLOR_RGB2BGR)
             cv2.imwrite(result_path, overlay_bgr)
-            response_data['result_image'] = f'/api/results/{result_filename}'
-            print(f"✅ Imagen guardada en: {result_path}")
+        # ✅ CORREGIDO: NO incluir /api/, solo /results/
+            response_data['result_image'] = f'/results/{result_filename}'
+            print(f"✅ Imagen guardada: {result_path}")
+        
         
         # Eliminar archivo temporal
         os.remove(filepath)

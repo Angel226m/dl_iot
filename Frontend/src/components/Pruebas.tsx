@@ -38,8 +38,7 @@ const Pruebas = () => {
   const [error, setError] = useState<string | null>(null)
   const [processedImage, setProcessedImage] = useState<string | null>(null)
   const [useTTA, setUseTTA] = useState(true)
-  const [showSettings, setShowSettings] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const API_URL = 'http://localhost:5000/api'
 

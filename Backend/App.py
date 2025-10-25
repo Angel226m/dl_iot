@@ -893,16 +893,16 @@ def calcular_metricas(mask, threshold=0.5):
     }
 
 def crear_visualizacion(img_original, mask, threshold=0.5):
-    """Crea múltiples visualizaciones: overlay, máscara sola, y comparación"""
+    """Crea visualización overlay"""
     h, w = img_original.shape[:2]
     mask_resized = cv2.resize(mask, (w, h), interpolation=cv2.INTER_LINEAR)
     mask_binary = (mask_resized > threshold).astype(np.uint8) * 255
     
-    # 1. Máscara colorizada (rojo sobre negro)
+    # Crear colormap personalizado (rojo para grietas)
     mask_colored = np.zeros((h, w, 3), dtype=np.uint8)
-    mask_colored[mask_binary > 127] = [255, 0, 0]  # Rojo brillante
+    mask_colored[mask_binary > 127] = [255, 0, 0]  # Rojo puro
     
-    # 2. Overlay con transparencia sobre imagen original
+    # Crear overlay con transparencia
     overlay = img_original.copy()
     alpha = 0.6
     overlay[mask_binary > 127] = (
@@ -910,16 +910,11 @@ def crear_visualizacion(img_original, mask, threshold=0.5):
         mask_colored[mask_binary > 127] * alpha
     ).astype(np.uint8)
     
-    # Añadir contornos amarillos brillantes
+    # Añadir contornos para mejor visualización
     contours, _ = cv2.findContours(mask_binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    cv2.drawContours(overlay, contours, -1, (255, 255, 0), 3)  # Amarillo más grueso
+    cv2.drawContours(overlay, contours, -1, (0, 255, 255), 2)  # Contorno amarillo
     
-    # 3. Máscara sola con mejor visualización (rojo sobre blanco)
-    mask_visual = np.ones((h, w, 3), dtype=np.uint8) * 255  # Fondo blanco
-    mask_visual[mask_binary > 127] = [255, 0, 0]  # Grietas en rojo
-    cv2.drawContours(mask_visual, contours, -1, (0, 0, 255), 2)  # Contorno azul
-    
-    return overlay, mask_visual, mask_colored
+    return overlay  # ← SOLO retornar overlay
 
 def imagen_a_base64(img_rgb):
     """Convierte imagen RGB a base64 para envío al frontend"""
@@ -942,16 +937,9 @@ def health():
         'tta_enabled': config.USE_TTA,
         'timestamp': datetime.now().isoformat()
     }), 200
-
 @app.route('/api/predict', methods=['POST'])
 def predict():
-    """
-    Endpoint principal de predicción con TTA
-    
-    Parámetros opcionales:
-        - use_tta: bool (default: True) - Usar Test-Time Augmentation
-        - return_base64: bool (default: False) - Devolver imágenes en base64
-    """
+    """Endpoint principal de predicción con TTA"""
     try:
         # Validar modelo
         if model is None:
@@ -974,7 +962,7 @@ def predict():
         
         # Obtener parámetros opcionales
         use_tta = request.form.get('use_tta', str(config.USE_TTA)).lower() == 'true'
-        return_base64 = request.form.get('return_base64', 'false').lower() == 'true'
+        return_base64 = request.form.get('return_base64', 'true').lower() == 'true'  # ← Default true
         
         # Guardar archivo temporalmente
         filename = secure_filename(file.filename)
@@ -982,6 +970,9 @@ def predict():
         filename = f"{timestamp}_{filename}"
         filepath = os.path.join(config.UPLOAD_FOLDER, filename)
         file.save(filepath)
+        
+        print(f"📥 Procesando: {filename}")
+        print(f"   TTA: {use_tta}, Base64: {return_base64}")
         
         # Procesar imagen
         img_tensor, img_original = procesar_imagen(filepath)
@@ -1010,10 +1001,11 @@ def predict():
             }
         }
         
-        # Guardar y devolver imagen según configuración
+        # Devolver en base64 (por defecto) o guardar archivo
         if return_base64:
-            # Devolver imagen en base64 (útil para frontend)
+            # Convertir overlay a base64
             response_data['imagen_overlay'] = imagen_a_base64(overlay)
+            print(f"✅ Imagen en base64 generada (tamaño: {len(response_data['imagen_overlay'])} chars)")
         else:
             # Guardar archivo y devolver URL
             result_filename = f"result_{filename}"
@@ -1021,6 +1013,7 @@ def predict():
             overlay_bgr = cv2.cvtColor(overlay, cv2.COLOR_RGB2BGR)
             cv2.imwrite(result_path, overlay_bgr)
             response_data['result_image'] = f'/api/results/{result_filename}'
+            print(f"✅ Imagen guardada en: {result_path}")
         
         # Eliminar archivo temporal
         os.remove(filepath)

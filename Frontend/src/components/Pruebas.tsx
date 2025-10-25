@@ -20,7 +20,11 @@ interface PredictResponse {
   success: boolean
   metricas: Metricas
   result_image?: string
+  mask_image?: string
+  grietas_image?: string
   imagen_overlay?: string
+  imagen_mascara?: string
+  imagen_grietas_solas?: string
   timestamp: string
   procesamiento?: {
     tta_usado: boolean
@@ -38,6 +42,7 @@ const Pruebas = () => {
   const [error, setError] = useState<string | null>(null)
   const [processedImage, setProcessedImage] = useState<string | null>(null)
   const [useTTA, setUseTTA] = useState(true)
+  const [showSettings, setShowSettings] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Detectar entorno y configurar URL correcta

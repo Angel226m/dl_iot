@@ -42,8 +42,7 @@ const Pruebas = () => {
   const [error, setError] = useState<string | null>(null)
   const [processedImage, setProcessedImage] = useState<string | null>(null)
   const [useTTA, setUseTTA] = useState(true)
-  const [showSettings, setShowSettings] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Detectar entorno y configurar URL correcta
   const API_URL = import.meta.env.VITE_API_URL || 

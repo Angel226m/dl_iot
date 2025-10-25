@@ -7,7 +7,7 @@ services:
     environment:
       - FLASK_ENV=production
       - FLASK_APP=app.py
-      - MODEL_PATH=/app/model/best_model.pth
+      - MODEL_PATH=/app/model/best_model.pth # ← Cambiar esto
       - PYTHONUNBUFFERED=1
       - MAX_CONTENT_LENGTH=20971520
       - CORS_ORIGIN=https://crackguard.angelproyect.com
@@ -19,8 +19,8 @@ services:
       - crackguard_results:/app/results
     restart: unless-stopped
     networks:
-      - backend-network      # Red del sistema principal (donde está nginx)
-      - crackguard-network   # Red propia
+      - backend-network
+      - crackguard-network
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:5000/health || exit 1"]
       interval: 30s
@@ -42,8 +42,8 @@ services:
         condition: service_started
     restart: unless-stopped
     networks:
-      - frontend-network     # Red del sistema principal (donde está nginx)
-      - crackguard-network   # Red propia
+      - frontend-network
+      - crackguard-network
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/"]
       interval: 30s
@@ -52,14 +52,12 @@ services:
       start_period: 40s
 
 networks:
-  # Red propia de CrackGuard
   crackguard-network:
     driver: bridge
     ipam:
       config:
         - subnet: 172.32.0.0/16
   
-  # Redes EXTERNAS del sistema de tours (ya existen)
   backend-network:
     external: true
     name: sistema-tours_backend-network

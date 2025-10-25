@@ -1,71 +1,107 @@
-import { Shield, Cpu, Cloud, AlertTriangle, DollarSign, Clock, Users, TrendingDown, FileX, Zap, Wifi, Brain, MousePointer, ShieldCheck, Target, Calendar, CheckCircle, Layers } from 'lucide-react'
+import { Shield, Cpu, Cloud, AlertTriangle, DollarSign, Clock, Users, TrendingDown, FileX, Zap, Wifi, Brain, MousePointer, ShieldCheck, Target, Calendar, CheckCircle, Layers, ArrowRight, Sparkles } from 'lucide-react'
 
 const Inicio = () => {
   const team = [
     'Garay Torres Angel',
     'Figueroa Quiroz Dario',
-    'Borjas Espinoza Pierr',
+    'Borjas Espinoza Pierre',
     'Conca Flores Omar'
   ]
 
   const problems = [
-    { icon: <Clock className="w-8 h-8" />, title: 'Inspecciones Manuales Ineficientes', description: 'Procesos lentos que consumen muchos recursos' },
-    { icon: <AlertTriangle className="w-8 h-8" />, title: 'Dificultades de Acceso', description: 'Zonas de difícil alcance requieren equipamiento especializado' },
-    { icon: <Users className="w-8 h-8" />, title: 'Riesgos Humanos Elevados', description: 'Peligro para inspectores en estructuras altas' },
-    { icon: <TrendingDown className="w-8 h-8" />, title: 'Detección Tardía', description: 'Las grietas se detectan cuando ya son peligrosas' },
-    { icon: <DollarSign className="w-8 h-8" />, title: 'Costos Altos', description: 'Equipos especializados aumentan costos' },
-    { icon: <FileX className="w-8 h-8" />, title: 'Falta de Trazabilidad', description: 'No hay registro digital del historial' },
+    { icon: <Clock className="w-7 h-7" />, title: 'Inspecciones Manuales Ineficientes', description: 'Procesos lentos que consumen muchos recursos' },
+    { icon: <AlertTriangle className="w-7 h-7" />, title: 'Dificultades de Acceso', description: 'Zonas de difícil alcance requieren equipamiento especializado' },
+    { icon: <Users className="w-7 h-7" />, title: 'Riesgos Humanos Elevados', description: 'Peligro para inspectores en estructuras altas' },
+    { icon: <TrendingDown className="w-7 h-7" />, title: 'Detección Tardía', description: 'Las grietas se detectan cuando ya son peligrosas' },
+    { icon: <DollarSign className="w-7 h-7" />, title: 'Costos Altos', description: 'Equipos especializados aumentan costos' },
+    { icon: <FileX className="w-7 h-7" />, title: 'Falta de Trazabilidad', description: 'No hay registro digital del historial' },
   ]
 
   const solutions = [
-    { icon: <Zap className="w-10 h-10" />, title: 'Automatización del Monitoreo', description: 'Sistema autónomo que reduce intervención humana' },
-    { icon: <Wifi className="w-10 h-10" />, title: 'Acceso Remoto IoT', description: 'Monitoreo desde cualquier ubicación en tiempo real' },
-    { icon: <Brain className="w-10 h-10" />, title: 'Análisis con IA', description: 'Deep Learning para detección precisa' },
-    { icon: <MousePointer className="w-10 h-10" />, title: 'Activación bajo Demanda', description: 'El usuario decide cuándo inspeccionar' },
-    { icon: <ShieldCheck className="w-10 h-10" />, title: 'Mayor Seguridad', description: 'Detección temprana previene accidentes' },
+    { icon: <Zap className="w-8 h-8" />, title: 'Automatización del Monitoreo', description: 'Sistema autónomo que reduce intervención humana', color: 'from-cyan-500 to-blue-600' },
+    { icon: <Wifi className="w-8 h-8" />, title: 'Acceso Remoto IoT', description: 'Monitoreo desde cualquier ubicación en tiempo real', color: 'from-blue-500 to-indigo-600' },
+    { icon: <Brain className="w-8 h-8" />, title: 'Análisis con IA', description: 'Deep Learning para detección precisa', color: 'from-indigo-500 to-blue-700' },
+    { icon: <MousePointer className="w-8 h-8" />, title: 'Activación bajo Demanda', description: 'El usuario decide cuándo inspeccionar', color: 'from-blue-600 to-cyan-600' },
+    { icon: <ShieldCheck className="w-8 h-8" />, title: 'Mayor Seguridad', description: 'Detección temprana previene accidentes', color: 'from-cyan-600 to-blue-500' },
   ]
 
   return (
-    <div className="pt-20">
-      {/* Hero Section */}
-      <section className="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 py-16">
-        <div className="max-w-7xl mx-auto px-6">
+    <div className="pt-16 bg-slate-950">
+      {/* Hero Section - Ultra Modern */}
+      <section className="relative overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 py-24">
+        {/* Animated Background Grid */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_0%,#000_70%,transparent_110%)] opacity-20"></div>
+        
+        {/* Glow Effects */}
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-cyan-500/20 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
+
+        <div className="relative max-w-7xl mx-auto px-6">
           <div className="text-center max-w-5xl mx-auto">
-            <div className="flex justify-center gap-6 mb-8">
-              <div className="animate-bounce bg-gradient-to-br from-blue-500 to-blue-600 p-4 rounded-2xl shadow-xl">
-                <Shield className="w-12 h-12 text-white" />
+            {/* Icon Stack */}
+            <div className="flex justify-center gap-4 mb-12">
+              <div className="group relative">
+                <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-2xl blur-xl opacity-75 group-hover:opacity-100 transition duration-300"></div>
+                <div className="relative bg-gradient-to-br from-slate-800 to-slate-900 p-5 rounded-2xl border border-slate-700 transform group-hover:scale-110 transition duration-300">
+                  <Shield className="w-10 h-10 text-cyan-400" />
+                </div>
               </div>
-              <div className="animate-bounce bg-gradient-to-br from-purple-500 to-purple-600 p-4 rounded-2xl shadow-xl" style={{ animationDelay: '0.1s' }}>
-                <Cpu className="w-12 h-12 text-white" />
+              <div className="group relative">
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-2xl blur-xl opacity-75 group-hover:opacity-100 transition duration-300"></div>
+                <div className="relative bg-gradient-to-br from-slate-800 to-slate-900 p-5 rounded-2xl border border-slate-700 transform group-hover:scale-110 transition duration-300" style={{animationDelay: '0.1s'}}>
+                  <Cpu className="w-10 h-10 text-blue-400" />
+                </div>
               </div>
-              <div className="animate-bounce bg-gradient-to-br from-pink-500 to-pink-600 p-4 rounded-2xl shadow-xl" style={{ animationDelay: '0.2s' }}>
-                <Cloud className="w-12 h-12 text-white" />
+              <div className="group relative">
+                <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-blue-600 rounded-2xl blur-xl opacity-75 group-hover:opacity-100 transition duration-300"></div>
+                <div className="relative bg-gradient-to-br from-slate-800 to-slate-900 p-5 rounded-2xl border border-slate-700 transform group-hover:scale-110 transition duration-300" style={{animationDelay: '0.2s'}}>
+                  <Cloud className="w-10 h-10 text-indigo-400" />
+                </div>
               </div>
             </div>
 
-            <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-6">
-              Sistema Inteligente de Detección de Grietas en Edificaciones
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/30 rounded-full px-5 py-2 mb-8">
+              <Sparkles className="w-4 h-4 text-cyan-400" />
+              <span className="text-cyan-400 text-sm font-semibold tracking-wide">TECNOLOGÍA DE VANGUARDIA</span>
+            </div>
+
+            <h1 className="text-6xl md:text-7xl lg:text-8xl font-black text-white mb-6 leading-tight">
+              Sistema Inteligente de
+              <span className="block bg-gradient-to-r from-cyan-400 via-blue-400 to-indigo-400 bg-clip-text text-transparent">
+                Detección de Grietas
+              </span>
             </h1>
             
-            <p className="text-2xl text-gray-700 mb-6">
-              basado en <span className="text-blue-600 font-bold">IoT</span> y{' '}
-              <span className="text-purple-600 font-bold">Deep Learning</span>
+            <p className="text-2xl md:text-3xl text-slate-300 mb-4 font-light">
+              Potenciado por <span className="text-cyan-400 font-bold">IoT</span> y{' '}
+              <span className="text-blue-400 font-bold">Deep Learning</span>
             </p>
 
-            <div className="inline-block bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-full shadow-2xl mb-12">
-              <p className="text-xl font-semibold">🛡️ CrackGuard: Detección Inteligente, Acceso sin Riesgos</p>
+            <div className="inline-flex items-center gap-3 bg-gradient-to-r from-cyan-600 to-blue-600 text-white px-10 py-5 rounded-2xl shadow-2xl shadow-blue-500/50 mb-16 hover:shadow-blue-500/70 transition-all duration-300 transform hover:scale-105">
+              <Shield className="w-7 h-7" />
+              <p className="text-xl font-bold">CrackGuard: Detección Inteligente, Acceso sin Riesgos</p>
             </div>
 
-            {/* Integrantes */}
-            <div className="mt-12">
-              <h3 className="text-2xl font-bold text-gray-800 mb-6">Integrantes del Equipo</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Team Grid */}
+            <div className="mt-20">
+              <div className="inline-flex items-center gap-2 mb-10">
+                <div className="h-px w-12 bg-gradient-to-r from-transparent to-cyan-500"></div>
+                <h3 className="text-2xl font-bold text-white tracking-tight">Equipo de Desarrollo</h3>
+                <div className="h-px w-12 bg-gradient-to-l from-transparent to-cyan-500"></div>
+              </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {team.map((member, index) => (
-                  <div key={index} className="bg-white rounded-xl shadow-lg p-6 hover:shadow-2xl transition-all duration-300">
-                    <div className="w-20 h-20 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full mx-auto mb-4 flex items-center justify-center shadow-lg">
-                      <span className="text-3xl font-bold text-white">{member.split(' ')[0][0]}</span>
+                  <div key={index} className="group relative">
+                    <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/20 to-blue-600/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition duration-500"></div>
+                    <div className="relative bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 rounded-2xl p-8 hover:border-cyan-500/50 transition-all duration-300 transform group-hover:-translate-y-2">
+                      <div className="w-20 h-20 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl mx-auto mb-5 flex items-center justify-center shadow-lg shadow-cyan-500/50 relative overflow-hidden">
+                        <div className="absolute inset-0 bg-white/20 transform -skew-x-12 group-hover:translate-x-full transition-transform duration-700"></div>
+                        <span className="text-3xl font-black text-white relative z-10">{member.split(' ')[0][0]}</span>
+                      </div>
+                      <p className="text-base font-semibold text-white mb-1">{member.split(' ')[0]} {member.split(' ')[1]}</p>
+                      <p className="text-sm text-slate-400">{member.split(' ').slice(2).join(' ')}</p>
                     </div>
-                    <p className="text-base font-semibold text-gray-800">{member}</p>
                   </div>
                 ))}
               </div>
@@ -74,123 +110,119 @@ const Inicio = () => {
         </div>
       </section>
 
-      {/* Problemática */}
-      <section className="bg-gradient-to-br from-orange-50 to-red-50 py-16">
+      {/* Problems Section */}
+      <section className="relative bg-slate-900 py-24">
         <div className="max-w-7xl mx-auto px-6">
-          <h2 className="text-4xl font-bold text-gray-800 mb-4 text-center">⚠️ Problemática</h2>
-          <p className="text-xl text-gray-600 text-center max-w-3xl mx-auto mb-12">
-            Los métodos tradicionales presentan múltiples desafíos que afectan la seguridad
-          </p>
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 bg-red-500/10 border border-red-500/30 rounded-full px-5 py-2 mb-6">
+              <AlertTriangle className="w-4 h-4 text-red-400" />
+              <span className="text-red-400 text-sm font-semibold tracking-wide">DESAFÍOS ACTUALES</span>
+            </div>
+            <h2 className="text-5xl md:text-6xl font-black text-white mb-6">Problemática</h2>
+            <p className="text-xl text-slate-400 max-w-3xl mx-auto">
+              Los métodos tradicionales presentan múltiples desafíos que comprometen la seguridad estructural
+            </p>
+          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {problems.map((problem, index) => (
-              <div key={index} className="bg-white rounded-xl shadow-lg p-6 hover:shadow-2xl transition-all duration-300">
-                <div className="bg-gradient-to-br from-red-400 to-orange-500 text-white p-4 rounded-xl mb-4 flex items-center justify-center shadow-lg">
-                  {problem.icon}
+              <div key={index} className="group relative">
+                <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 to-orange-600/10 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition duration-500"></div>
+                <div className="relative bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 rounded-2xl p-8 hover:border-red-500/50 transition-all duration-300 h-full">
+                  <div className="bg-gradient-to-br from-red-500 to-orange-600 text-white p-4 rounded-xl mb-5 inline-flex shadow-lg shadow-red-500/30">
+                    {problem.icon}
+                  </div>
+                  <h3 className="text-xl font-bold text-white mb-3">{problem.title}</h3>
+                  <p className="text-slate-400 leading-relaxed">{problem.description}</p>
                 </div>
-                <h3 className="text-xl font-bold text-gray-800 mb-3 text-center">{problem.title}</h3>
-                <p className="text-gray-600 text-center">{problem.description}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Solución */}
-      <section className="bg-gradient-to-br from-green-50 via-blue-50 to-purple-50 py-16">
-        <div className="max-w-7xl mx-auto px-6">
-          <h2 className="text-4xl font-bold text-gray-800 mb-4 text-center">✅ Solución Propuesta</h2>
-          <p className="text-xl text-gray-600 text-center max-w-3xl mx-auto mb-12">
-            CrackGuard integra IoT y Deep Learning para revolucionar la inspección
-          </p>
+      {/* Solution Section */}
+      <section className="relative bg-slate-950 py-24">
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:4rem_4rem] opacity-20"></div>
+        
+        <div className="relative max-w-7xl mx-auto px-6">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 bg-green-500/10 border border-green-500/30 rounded-full px-5 py-2 mb-6">
+              <CheckCircle className="w-4 h-4 text-green-400" />
+              <span className="text-green-400 text-sm font-semibold tracking-wide">NUESTRA SOLUCIÓN</span>
+            </div>
+            <h2 className="text-5xl md:text-6xl font-black text-white mb-6">Tecnología CrackGuard</h2>
+            <p className="text-xl text-slate-400 max-w-3xl mx-auto">
+              Integración perfecta de IoT y Deep Learning para revolucionar la inspección estructural
+            </p>
+          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {solutions.map((solution, index) => (
-              <div key={index} className="bg-white rounded-xl shadow-lg p-6 hover:shadow-2xl transition-all duration-300">
-                <div className="bg-gradient-to-br from-green-400 to-blue-500 text-white p-4 rounded-xl mb-4 flex items-center justify-center shadow-lg">
-                  {solution.icon}
+              <div key={index} className="group relative">
+                <div className={`absolute inset-0 bg-gradient-to-br ${solution.color} rounded-2xl blur-xl opacity-0 group-hover:opacity-50 transition duration-500`}></div>
+                <div className="relative bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 rounded-2xl p-8 hover:border-cyan-500/50 transition-all duration-300 h-full transform group-hover:-translate-y-2">
+                  <div className={`bg-gradient-to-br ${solution.color} text-white p-4 rounded-xl mb-5 inline-flex shadow-lg`}>
+                    {solution.icon}
+                  </div>
+                  <h3 className="text-xl font-bold text-white mb-3">{solution.title}</h3>
+                  <p className="text-slate-400 leading-relaxed">{solution.description}</p>
+                  <ArrowRight className="w-5 h-5 text-cyan-400 mt-4 transform group-hover:translate-x-2 transition-transform" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-800 mb-3 text-center">{solution.title}</h3>
-                <p className="text-gray-600 text-center">{solution.description}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Alcance */}
-      <section className="bg-white py-16">
+      {/* Scope Section */}
+      <section className="relative bg-slate-900 py-24">
         <div className="max-w-7xl mx-auto px-6">
-          <h2 className="text-4xl font-bold text-gray-800 mb-4 text-center">🎯 Alcance del Proyecto</h2>
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 bg-blue-500/10 border border-blue-500/30 rounded-full px-5 py-2 mb-6">
+              <Target className="w-4 h-4 text-blue-400" />
+              <span className="text-blue-400 text-sm font-semibold tracking-wide">ALCANCE</span>
+            </div>
+            <h2 className="text-5xl md:text-6xl font-black text-white mb-6">Plan de Ejecución</h2>
+          </div>
           
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-12">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <div className="space-y-6">
-              <div className="bg-white rounded-xl shadow-lg p-6">
-                <div className="flex items-start gap-4">
-                  <Target className="w-8 h-8 text-blue-600 mt-1" />
-                  <div>
-                    <h3 className="text-xl font-semibold text-gray-800 mb-2">Desarrollo del MVP</h3>
-                    <p className="text-gray-600">Enfoque en detección de grietas con un Producto Mínimo Viable</p>
+              {[
+                { icon: Target, title: 'Desarrollo del MVP', desc: 'Enfoque en detección de grietas con un Producto Mínimo Viable', color: 'cyan' },
+                { icon: Layers, title: 'Flujo Completo', desc: 'Captura → Análisis con IA → Visualización de resultados', color: 'blue' },
+                { icon: Calendar, title: 'Duración: 7 semanas', desc: 'Del 06 de octubre al 23 de noviembre de 2025', color: 'indigo' },
+                { icon: CheckCircle, title: 'Entregables', desc: 'Sistema IoT • Modelo DL • Interfaz Web • Documentación', color: 'green' },
+              ].map((item, index) => (
+                <div key={index} className="group relative">
+                  <div className={`absolute inset-0 bg-${item.color}-500/10 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition duration-500`}></div>
+                  <div className="relative bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 rounded-2xl p-6 hover:border-cyan-500/50 transition-all duration-300">
+                    <div className="flex items-start gap-4">
+                      <div className={`bg-gradient-to-br from-${item.color}-500 to-${item.color}-600 p-3 rounded-xl`}>
+                        <item.icon className="w-6 h-6 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-white mb-2">{item.title}</h3>
+                        <p className="text-slate-400">{item.desc}</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-
-              <div className="bg-white rounded-xl shadow-lg p-6">
-                <div className="flex items-start gap-4">
-                  <Layers className="w-8 h-8 text-blue-600 mt-1" />
-                  <div>
-                    <h3 className="text-xl font-semibold text-gray-800 mb-2">Flujo Completo</h3>
-                    <p className="text-gray-600">Captura → Análisis con IA → Visualización de resultados</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-xl shadow-lg p-6">
-                <div className="flex items-start gap-4">
-                  <Calendar className="w-8 h-8 text-blue-600 mt-1" />
-                  <div>
-                    <h3 className="text-xl font-semibold text-gray-800 mb-2">Duración del Proyecto</h3>
-                    <p className="text-gray-600 font-semibold">7 semanas</p>
-                    <p className="text-gray-500 text-sm mt-1">Del 06 de octubre al 23 de noviembre de 2025</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-blue-50 rounded-xl shadow-lg p-6">
-                <div className="flex items-start gap-4">
-                  <CheckCircle className="w-8 h-8 text-green-600 mt-1" />
-                  <div>
-                    <h3 className="text-xl font-semibold text-gray-800 mb-2">Entregables Principales</h3>
-                    <ul className="text-gray-600 space-y-1 ml-4 list-disc">
-                      <li>Sistema IoT funcional con Raspberry Pi</li>
-                      <li>Modelo de Deep Learning entrenado</li>
-                      <li>Interfaz web responsiva</li>
-                      <li>Documentación técnica completa</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
+              ))}
             </div>
 
-            <div className="rounded-2xl overflow-hidden shadow-2xl">
-              <div className="bg-gradient-to-br from-blue-500 to-purple-600 h-full flex items-center justify-center p-8">
-                <div className="text-center text-white">
-                  <Layers className="w-32 h-32 mx-auto mb-6" />
-                  <p className="text-3xl font-bold mb-6">Arquitectura IoT</p>
-                  <div className="space-y-4 text-left bg-white/10 backdrop-blur-sm rounded-xl p-6">
-                    <div className="flex items-center gap-3">
-                      <div className="w-4 h-4 bg-green-400 rounded-full"></div>
-                      <span className="text-lg">Capa de Hardware</span>
+            <div className="relative group">
+              <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/20 to-blue-600/20 rounded-3xl blur-2xl opacity-75 group-hover:opacity-100 transition duration-500"></div>
+              <div className="relative bg-gradient-to-br from-slate-800 via-slate-900 to-slate-950 border border-slate-700 rounded-3xl p-12 h-full flex flex-col justify-center">
+                <Layers className="w-24 h-24 text-cyan-400 mx-auto mb-8" />
+                <p className="text-4xl font-black text-white text-center mb-8">Arquitectura IoT</p>
+                <div className="space-y-5">
+                  {['Capa de Hardware', 'Capa de Servidor', 'Capa de Cliente'].map((layer, i) => (
+                    <div key={i} className="flex items-center gap-4 bg-slate-800/50 rounded-xl p-4 border border-slate-700 hover:border-cyan-500/50 transition-all duration-300">
+                      <div className={`w-3 h-3 rounded-full ${i === 0 ? 'bg-cyan-400' : i === 1 ? 'bg-blue-400' : 'bg-indigo-400'}`}></div>
+                      <span className="text-lg font-semibold text-white">{layer}</span>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-4 h-4 bg-blue-400 rounded-full"></div>
-                      <span className="text-lg">Capa de Servidor</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-4 h-4 bg-purple-400 rounded-full"></div>
-                      <span className="text-lg">Capa de Cliente</span>
-                    </div>
-                  </div>
+                  ))}
                 </div>
               </div>
             </div>

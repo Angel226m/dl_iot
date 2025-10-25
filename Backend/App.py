@@ -28,7 +28,16 @@ import base64
 # ═══════════════════════════════════════════════════════════════════════════
 
 app = Flask(__name__)
-CORS(app)
+# Configurar CORS para permitir todas las peticiones en desarrollo
+CORS(app, resources={
+    r"/api/*": {
+        "origins": ["*"],
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Content-Type"],
+        "expose_headers": ["Content-Type"],
+        "supports_credentials": False
+    }
+})
 
 class Config:
     # Directorios

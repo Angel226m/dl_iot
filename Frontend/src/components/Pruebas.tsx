@@ -38,9 +38,14 @@ const Pruebas = () => {
   const [error, setError] = useState<string | null>(null)
   const [processedImage, setProcessedImage] = useState<string | null>(null)
   const [useTTA, setUseTTA] = useState(true)
-   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [showSettings, setShowSettings] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const API_URL = 'http://localhost:5000/api'
+  // Detectar entorno y configurar URL correcta
+  const API_URL = import.meta.env.VITE_API_URL || 
+                  (window.location.hostname === 'localhost' 
+                    ? 'http://localhost:5001/api' 
+                    : '/api')
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]

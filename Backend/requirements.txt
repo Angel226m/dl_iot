@@ -13,3 +13,5 @@ scikit-image==0.22.0
 Pillow==10.1.0
 Werkzeug==3.0.1
 transformers==4.34.0
+six>=1.16.0
+pretrainedmodels==0.7.4

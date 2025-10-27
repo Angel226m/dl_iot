@@ -744,7 +744,7 @@ const Pruebas = () => {
 
 export default Pruebas*/
 import { useState, useRef } from 'react'
-import { Camera, Upload, Image as ImageIcon, Zap, CheckCircle, AlertCircle, Loader, XCircle, AlertTriangle, Info, Settings, TrendingUp, Compass } from 'lucide-react'
+import { Camera, Upload, Image as ImageIcon, Zap, CheckCircle, AlertCircle, Loader, XCircle, AlertTriangle, Info, Settings, Compass } from 'lucide-react'
 
 interface AnalisisMorfologico {
   patron_general: string

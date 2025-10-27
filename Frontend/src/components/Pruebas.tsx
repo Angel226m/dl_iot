@@ -742,7 +742,9 @@ const Pruebas = () => {
   )
 }
 
-export default Pruebas*/
+export default Pruebas*/ 
+
+
 import { useState, useRef } from 'react'
 import { Camera, Upload, Image as ImageIcon, Zap, CheckCircle, AlertCircle, Loader, XCircle, AlertTriangle, Info, Settings, Compass } from 'lucide-react'
 
@@ -780,18 +782,18 @@ interface Metricas {
   pixeles_con_grietas: number
   porcentaje_grietas: number
   num_grietas_detectadas: number
-  longitud_total_px: number
-  longitud_promedio_px: number
-  longitud_maxima_px: number
-  ancho_promedio_px: number
+  longitud_total_px?: number
+  longitud_promedio_px?: number
+  longitud_maxima_px?: number
+  ancho_promedio_px?: number
   severidad: string
   estado: string
   color_severidad: string
   confianza: number
-  confidence_max: number
-  confidence_mean: number
+  confidence_max?: number
+  confidence_mean?: number
   tta_usado: boolean
-  post_processing: boolean
+  post_processing?: boolean
   analisis_morfologico?: AnalisisMorfologico
 }
 
@@ -802,16 +804,16 @@ interface PredictResponse {
   imagen_overlay?: string
   timestamp: string
   procesamiento?: {
-    architecture: string
-    encoder: string
+    architecture?: string
+    encoder?: string
     tta_usado: boolean
-    tta_transforms: number
+    tta_transforms?: number
     threshold: number
     target_size: number
-    post_processing: boolean
-    morphological_analysis: boolean
-    overlay_color: string
-    overlay_alpha: number
+    post_processing?: boolean
+    morphological_analysis?: boolean
+    overlay_color?: string
+    overlay_alpha?: number
   }
   error?: string
 }
@@ -831,7 +833,6 @@ const Pruebas = () => {
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
-  // Detectar entorno y configurar URL correcta
   const API_URL = import.meta.env.VITE_API_URL || 
                   (window.location.hostname === 'localhost' 
                     ? 'http://localhost:5001/api' 
@@ -864,12 +865,11 @@ const Pruebas = () => {
     }
   }
 
-  // 📸 NUEVA FUNCIÓN: Abrir cámara del dispositivo
   const openCamera = async () => {
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: { 
-          facingMode: 'environment', // Cámara trasera en móviles
+          facingMode: 'environment',
           width: { ideal: 1920 },
           height: { ideal: 1080 }
         }
@@ -878,7 +878,6 @@ const Pruebas = () => {
       setStream(mediaStream)
       setIsCameraOpen(true)
       
-      // Esperar a que el video se monte
       setTimeout(() => {
         if (videoRef.current) {
           videoRef.current.srcObject = mediaStream
@@ -890,7 +889,6 @@ const Pruebas = () => {
     }
   }
 
-  // 📸 NUEVA FUNCIÓN: Capturar foto desde cámara
   const capturePhoto = () => {
     if (!videoRef.current || !canvasRef.current) return
 
@@ -900,14 +898,10 @@ const Pruebas = () => {
 
     if (!context) return
 
-    // Configurar canvas con dimensiones del video
     canvas.width = video.videoWidth
     canvas.height = video.videoHeight
-
-    // Dibujar frame actual del video
     context.drawImage(video, 0, 0, canvas.width, canvas.height)
 
-    // Convertir a blob
     canvas.toBlob((blob) => {
       if (blob) {
         const file = new File([blob], `camera_capture_${Date.now()}.jpg`, { type: 'image/jpeg' })
@@ -920,7 +914,6 @@ const Pruebas = () => {
     }, 'image/jpeg', 0.95)
   }
 
-  // 📸 NUEVA FUNCIÓN: Cerrar cámara
   const closeCamera = () => {
     if (stream) {
       stream.getTracks().forEach(track => track.stop())
@@ -963,24 +956,19 @@ const Pruebas = () => {
       formData.append('return_base64', 'true')
 
       console.log('🚀 Enviando a:', `${API_URL}/predict`)
-      console.log('📦 TTA:', useTTA)
 
       const response = await fetch(`${API_URL}/predict`, {
         method: 'POST',
         body: formData,
       })
 
-      console.log('📡 Response status:', response.status)
-
       if (!response.ok) {
         const contentType = response.headers.get('content-type')
-        if (contentType && contentType.includes('application/json')) {
+        if (contentType?.includes('application/json')) {
           const errorData = await response.json()
           throw new Error(errorData.error || 'Error en la predicción')
         } else {
-          const text = await response.text()
-          console.error('❌ Response HTML:', text.substring(0, 500))
-          throw new Error('El servidor no respondió correctamente')
+          throw new Error(`Error del servidor: ${response.status}`)
         }
       }
 
@@ -993,15 +981,12 @@ const Pruebas = () => {
 
       setResult(data)
 
-      // Manejar imagen procesada
       if (data.imagen_overlay) {
-        console.log('✅ Usando imagen_overlay (base64)')
         setProcessedImage(data.imagen_overlay)
       } else if (data.result_image) {
-        console.log('⚠️ Usando result_image (URL):', data.result_image)
-        const imageUrl = data.result_image.startsWith('/results/')
-          ? `/api${data.result_image}`
-          : data.result_image
+        const imageUrl = data.result_image.startsWith('http') 
+          ? data.result_image 
+          : `${API_URL.replace('/api', '')}${data.result_image}`
         setProcessedImage(imageUrl)
       }
 
@@ -1065,7 +1050,6 @@ const Pruebas = () => {
     }
   }
 
-  // 🆕 Función para obtener icono de patrón
   const getPatronIcon = (patron: string) => {
     switch (patron) {
       case 'horizontal': return '↔️'
@@ -1077,7 +1061,6 @@ const Pruebas = () => {
     }
   }
 
-  // 🆕 Función para color de orientación
   const getOrientacionColor = (orientacion: string) => {
     switch (orientacion) {
       case 'horizontal': return 'bg-blue-500/20 text-blue-400 border-blue-500/30'
@@ -1086,6 +1069,10 @@ const Pruebas = () => {
       case 'irregular': return 'bg-purple-500/20 text-purple-400 border-purple-500/30'
       default: return 'bg-slate-500/20 text-slate-400 border-slate-500/30'
     }
+  }
+
+  const safeToFixed = (value: number | undefined, decimals: number = 2): string => {
+    return value !== undefined && value !== null ? value.toFixed(decimals) : '0.00'
   }
 
   return (
@@ -1106,7 +1093,6 @@ const Pruebas = () => {
               Analiza imágenes con UNet++ EfficientNet-B8 + TTA + Análisis Morfológico
             </p>
             
-            {/* Toggle TTA */}
             <div className="mt-8 inline-flex items-center gap-4 bg-slate-800/50 border border-slate-700 rounded-full px-6 py-3">
               <Settings className="w-5 h-5 text-slate-400" />
               <span className="text-slate-300 font-medium">Test-Time Augmentation</span>
@@ -1126,12 +1112,6 @@ const Pruebas = () => {
                 {useTTA ? 'ACTIVADO (6x)' : 'DESACTIVADO'}
               </span>
             </div>
-            
-            {useTTA && (
-              <p className="mt-3 text-sm text-cyan-400">
-                ⚡ Mayor precisión (6x transformaciones) + Análisis morfológico avanzado
-              </p>
-            )}
           </div>
 
           {error && (
@@ -1153,7 +1133,6 @@ const Pruebas = () => {
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Panel de Captura */}
             <div className="relative group">
               <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-blue-600/10 rounded-3xl blur-2xl opacity-0 group-hover:opacity-100 transition duration-500"></div>
               <div className="relative bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 rounded-3xl p-6 md:p-8 hover:border-cyan-500/50 transition-all duration-300">
@@ -1164,7 +1143,6 @@ const Pruebas = () => {
                   Captura de Imagen
                 </h3>
 
-                {/* 📸 MODAL DE CÁMARA */}
                 {isCameraOpen && (
                   <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4">
                     <div className="relative max-w-4xl w-full">
@@ -1200,7 +1178,6 @@ const Pruebas = () => {
 
                 {!selectedImage ? (
                   <div className="space-y-4">
-                    {/* 📸 NUEVO BOTÓN: Cámara del dispositivo */}
                     <button
                       onClick={openCamera}
                       className="group/btn relative w-full overflow-hidden"
@@ -1259,15 +1236,11 @@ const Pruebas = () => {
                         </li>
                         <li className="flex items-start gap-2">
                           <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full mt-2 flex-shrink-0"></div>
-                          <span>El sistema detectará grietas y analizará su orientación (horizontal/vertical/diagonal)</span>
+                          <span>El sistema detectará grietas y analizará su orientación</span>
                         </li>
                         <li className="flex items-start gap-2">
                           <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full mt-2 flex-shrink-0"></div>
-                          <span>Recibirás causa probable y nivel de severidad ajustado</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full mt-2 flex-shrink-0"></div>
-                          <span>Formatos: PNG, JPG, BMP, TIFF (máx. 20MB)</span>
+                          <span>Recibirás causa probable y nivel de severidad</span>
                         </li>
                       </ul>
                     </div>
@@ -1315,7 +1288,7 @@ const Pruebas = () => {
                           <div>
                             <p className="font-bold text-blue-400 text-xl">Procesando imagen...</p>
                             <p className="text-sm text-slate-400">
-                              {useTTA ? 'Aplicando TTA (6x transformaciones) + Análisis Morfológico' : 'Aplicando modelo UNet++ EfficientNet-B8'}
+                              {useTTA ? 'Aplicando TTA (6x) + Análisis Morfológico' : 'Aplicando modelo UNet++ B8'}
                             </p>
                           </div>
                         </div>
@@ -1332,13 +1305,14 @@ const Pruebas = () => {
                           alt="Imagen procesada"
                           className="w-full h-80 object-contain bg-slate-900"
                           onError={(e) => {
-                            console.error('Error cargando imagen procesada')
+                            console.error('Error cargando imagen procesada:', processedImage)
                             e.currentTarget.style.display = 'none'
+                            setError('No se pudo cargar la imagen procesada')
                           }}
                         />
                         <div className="bg-slate-800 p-3 text-center border-t border-slate-700">
                           <p className="text-sm text-slate-400 font-medium">
-                            Imagen Procesada (Detección de Grietas) 
+                            Imagen Procesada 
                             {result.metricas.tta_usado && <span className="text-cyan-400"> • TTA Aplicado</span>}
                           </p>
                         </div>
@@ -1362,7 +1336,6 @@ const Pruebas = () => {
                               <AlertCircle className={`w-10 h-10 ${getSeveridadColor(result.metricas.severidad)}`} />
                             </div>
 
-                            {/* 🆕 ANÁLISIS MORFOLÓGICO */}
                             {result.metricas.analisis_morfologico && (
                               <div className="bg-gradient-to-br from-purple-500/10 to-pink-600/10 border border-purple-500/30 rounded-xl p-5 space-y-4">
                                 <div className="flex items-center gap-3">
@@ -1390,9 +1363,8 @@ const Pruebas = () => {
                                   </div>
                                 </div>
 
-                                {/* Distribución de orientaciones */}
                                 <div className="grid grid-cols-2 gap-2">
-                                  {Object.entries(result.metricas.analisis_morfologico.distribución_orientaciones).map(([tipo, count]) => (
+                                  {Object.entries(result.metricas.analisis_morfologico.distribución_orientaciones || {}).map(([tipo, count]) => (
                                     count > 0 && (
                                       <div key={tipo} className={`border rounded-lg p-2 text-center ${getOrientacionColor(tipo)}`}>
                                         <p className="text-xs font-medium capitalize">{tipo}</p>
@@ -1402,8 +1374,8 @@ const Pruebas = () => {
                                   ))}
                                 </div>
 
-                                {/* Grietas principales */}
-                                {result.metricas.analisis_morfologico.grietas_principales.length > 0 && (
+                                {result.metricas.analisis_morfologico.grietas_principales && 
+                                 result.metricas.analisis_morfologico.grietas_principales.length > 0 && (
                                   <div className="bg-slate-900/50 border border-slate-600 rounded-lg p-3">
                                     <p className="text-xs text-slate-400 mb-2 font-semibold">Top Grietas Detectadas:</p>
                                     <div className="space-y-2">
@@ -1411,10 +1383,10 @@ const Pruebas = () => {
                                         <div key={grieta.id} className="flex items-center justify-between text-xs bg-slate-800 rounded p-2">
                                           <span className="text-slate-300">
                                             #{grieta.id} • {grieta.orientacion} 
-                                            {grieta.angulo_grados && ` (${grieta.angulo_grados.toFixed(1)}°)`}
+                                            {grieta.angulo_grados !== null && ` (${safeToFixed(grieta.angulo_grados, 1)}°)`}
                                           </span>
                                           <span className="text-cyan-400 font-semibold">
-                                            {grieta.longitud_px.toFixed(0)}px
+                                            {safeToFixed(grieta.longitud_px, 0)}px
                                           </span>
                                         </div>
                                       ))}
@@ -1427,9 +1399,9 @@ const Pruebas = () => {
                             <div className="grid grid-cols-2 gap-3">
                               {[
                                 { label: 'Grietas detectadas', value: result.metricas.num_grietas_detectadas, icon: '🔍' },
-                                { label: 'Cobertura', value: `${result.metricas.porcentaje_grietas.toFixed(2)}%`, icon: '📊' },
-                                { label: 'Longitud máxima', value: `${result.metricas.longitud_maxima_px.toFixed(0)} px`, icon: '📏' },
-                                { label: 'Confianza', value: `${result.metricas.confianza.toFixed(1)}%`, icon: '✓' },
+                                { label: 'Cobertura', value: `${safeToFixed(result.metricas.porcentaje_grietas)}%`, icon: '📊' },
+                                { label: 'Longitud máxima', value: `${safeToFixed(result.metricas.longitud_maxima_px, 0)} px`, icon: '📏' },
+                                { label: 'Confianza', value: `${safeToFixed(result.metricas.confianza, 1)}%`, icon: '✓' },
                               ].map((item, idx) => (
                                 <div key={idx} className="bg-slate-900 border border-slate-700 rounded-xl p-4 hover:border-cyan-500/50 transition-all">
                                   <p className="text-xs text-slate-500 mb-1 flex items-center gap-1">
@@ -1441,6 +1413,7 @@ const Pruebas = () => {
                               ))}
                             </div>
 
+                            {/* ✅ USANDO getSeveridadBg */}
                             <div className={`border rounded-xl p-4 ${getSeveridadBg(result.metricas.severidad)}`}>
                               <p className={`font-medium text-center ${getSeveridadColor(result.metricas.severidad)}`}>
                                 {result.metricas.severidad === 'Alta' || result.metricas.severidad === 'Media-Alta'
@@ -1454,8 +1427,8 @@ const Pruebas = () => {
                             {result.procesamiento && (
                               <div className="bg-slate-900/50 border border-slate-600 rounded-xl p-3 text-xs text-slate-400">
                                 <p>
-                                  {result.procesamiento.architecture} + {result.procesamiento.encoder} • 
-                                  {result.procesamiento.tta_usado ? ` TTA (${result.procesamiento.tta_transforms}x)` : ' Estándar'} • 
+                                  {result.procesamiento.architecture || 'UNet++'} + {result.procesamiento.encoder || 'EfficientNet-B8'} • 
+                                  {result.procesamiento.tta_usado ? ` TTA (${result.procesamiento.tta_transforms || 6}x)` : ' Estándar'} • 
                                   Umbral: {result.procesamiento.threshold} • 
                                   Resolución: {result.procesamiento.target_size}x{result.procesamiento.target_size}
                                   {result.procesamiento.morphological_analysis && ' • Análisis Morfológico'}
@@ -1468,27 +1441,14 @@ const Pruebas = () => {
                             <div className="flex items-center gap-3 mb-4">
                               <CheckCircle className="w-12 h-12 text-green-400" />
                               <div className="flex-1">
-                                <h4 className="text-2xl font-bold text-white">
-                                  {result.metricas.estado}
-                                </h4>
+                                <h4 className="text-2xl font-bold text-white">{result.metricas.estado}</h4>
                                 <p className="text-slate-400">Estructura en buen estado</p>
-                              </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-3">
-                              <div className="bg-slate-900 border border-slate-700 rounded-xl p-4">
-                                <p className="text-xs text-slate-500 mb-1">Confianza</p>
-                                <p className="text-2xl font-bold text-green-400">{result.metricas.confianza.toFixed(1)}%</p>
-                              </div>
-                              <div className="bg-slate-900 border border-slate-700 rounded-xl p-4">
-                                <p className="text-xs text-slate-500 mb-1">Total píxeles</p>
-                                <p className="text-2xl font-bold text-white">{result.metricas.total_pixeles.toLocaleString()}</p>
                               </div>
                             </div>
 
                             <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4">
                               <p className="text-green-400 text-center font-medium">
-                                ✓ Sin grietas significativas detectadas - Monitoreo continuo recomendado
+                                ✓ Sin grietas significativas detectadas
                               </p>
                             </div>
                           </div>
@@ -1500,119 +1460,52 @@ const Pruebas = () => {
               </div>
             </div>
 
-            {/* Panel de Información */}
+            {/* Panel derecho */}
             <div className="space-y-6">
-              <div className="relative group">
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-indigo-600/10 rounded-3xl blur-2xl opacity-0 group-hover:opacity-100 transition duration-500"></div>
-                <div className="relative bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 rounded-3xl p-6 md:p-8 hover:border-blue-500/50 transition-all duration-300">
-                  <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
-                    <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-2 rounded-xl">
-                      <ImageIcon className="w-6 h-6 text-white" />
+              <div className="relative bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 rounded-3xl p-6 md:p-8">
+                <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
+                  <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-2 rounded-xl">
+                    <ImageIcon className="w-6 h-6 text-white" />
+                  </div>
+                  Tecnología IA
+                </h3>
+                
+                <div className="space-y-4">
+                  <div className="bg-slate-900/50 border border-slate-700 rounded-xl p-5">
+                    <h4 className="font-bold text-cyan-400 mb-3 text-lg">UNet++ EfficientNet-B8</h4>
+                    <p className="text-slate-300 text-sm leading-relaxed mb-3">
+                      Arquitectura encoder-decoder con Test-Time Augmentation y análisis morfológico avanzado.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {['UNet++', 'EfficientNet-B8', 'TTA 6x', 'Morfología'].map((tag, idx) => (
+                        <span key={idx} className="bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-semibold px-3 py-1 rounded-full">
+                          {tag}
+                        </span>
+                      ))}
                     </div>
-                    Tecnología IA
-                  </h3>
-                  
-                  <div className="space-y-4">
-                    <div className="bg-slate-900/50 border border-slate-700 rounded-xl p-5">
-                      <h4 className="font-bold text-cyan-400 mb-3 text-lg">UNet++ EfficientNet-B8 + TTA</h4>
-                      <p className="text-slate-300 text-sm leading-relaxed mb-3">
-                        Arquitectura encoder-decoder de última generación con Test-Time Augmentation (6x) 
-                        y análisis morfológico para detección y clasificación de patrones de grietas.
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {['UNet++', 'EfficientNet-B8', 'TTA 6x', 'Morfología', 'Alta Precisión'].map((tag, idx) => (
-                          <span key={idx} className="bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-semibold px-3 py-1 rounded-full">
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
+                  </div>
 
-                    <div className="bg-slate-900/50 border border-slate-700 rounded-xl p-5">
-                      <h4 className="font-bold text-blue-400 mb-3 text-lg">Características del Sistema</h4>
-                      <ul className="space-y-3">
-                        {[
-                          { icon: '🎯', text: 'Detección automática pixel-perfect' },
-                          { icon: '📐', text: 'Clasificación de orientación (horizontal/vertical/diagonal)' },
-                          { icon: '🔍', text: 'Análisis de causa probable estructural' },
-                          { icon: '📊', text: 'Métricas detalladas y análisis completo' },
-                          { icon: '⚡', text: 'Procesamiento optimizado con TTA (6x)' },
-                          { icon: '📈', text: 'Severidad ajustada por patrón morfológico' },
-                        ].map((item, idx) => (
-                          <li key={idx} className="flex items-start gap-3 text-slate-300 text-sm">
-                            <span className="text-lg">{item.icon}</span>
-                            <span>{item.text}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-
-                    <div className="bg-gradient-to-br from-indigo-500/10 to-blue-600/10 border border-indigo-500/30 rounded-xl p-5">
-                      <h4 className="font-bold text-indigo-400 mb-3 text-lg">Patrones Detectados</h4>
-                      <div className="space-y-2">
-                        {[
-                          { icon: '↔️', label: 'Horizontal', causa: 'Flexión, presión lateral' },
-                          { icon: '↕️', label: 'Vertical', causa: 'Cargas pesadas, asentamientos' },
-                          { icon: '↗️', label: 'Diagonal', causa: 'Esfuerzos cortantes, movimiento terreno' },
-                          { icon: '🗺️', label: 'Ramificada', causa: 'Contracción térmica, superficial' },
-                        ].map((item, idx) => (
-                          <div key={idx} className="bg-slate-900/50 rounded-lg p-3 flex items-start gap-3">
-                            <span className="text-xl">{item.icon}</span>
-                            <div className="flex-1">
-                              <p className="text-white font-semibold text-sm">{item.label}</p>
-                              <p className="text-slate-400 text-xs">{item.causa}</p>
-                            </div>
+                  <div className="bg-gradient-to-br from-indigo-500/10 to-blue-600/10 border border-indigo-500/30 rounded-xl p-5">
+                    <h4 className="font-bold text-indigo-400 mb-3 text-lg">Patrones Detectados</h4>
+                    <div className="space-y-2">
+                      {[
+                        { icon: '↔️', label: 'Horizontal', causa: 'Flexión, presión lateral' },
+                        { icon: '↕️', label: 'Vertical', causa: 'Cargas pesadas, asentamientos' },
+                        { icon: '↗️', label: 'Diagonal', causa: 'Esfuerzos cortantes' },
+                        { icon: '🗺️', label: 'Ramificada', causa: 'Contracción térmica' },
+                      ].map((item, idx) => (
+                        <div key={idx} className="bg-slate-900/50 rounded-lg p-3 flex items-start gap-3">
+                          <span className="text-xl">{item.icon}</span>
+                          <div className="flex-1">
+                            <p className="text-white font-semibold text-sm">{item.label}</p>
+                            <p className="text-slate-400 text-xs">{item.causa}</p>
                           </div>
-                        ))}
-                      </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
               </div>
-
-              {result && result.success && result.procesamiento && (
-                <div className="relative group">
-                  <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-pink-600/10 rounded-3xl blur-2xl opacity-0 group-hover:opacity-100 transition duration-500"></div>
-                  <div className="relative bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 rounded-3xl p-6 hover:border-purple-500/50 transition-all duration-300">
-                    <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                      <div className="bg-gradient-to-br from-purple-500 to-pink-600 p-2 rounded-lg">
-                        <Info className="w-5 h-5 text-white" />
-                      </div>
-                      Detalles del Procesamiento
-                    </h3>
-                    
-                    <div className="space-y-3 text-sm">
-                      <div className="flex justify-between items-center bg-slate-900/50 border border-slate-700 rounded-lg p-3">
-                        <span className="text-slate-400">Arquitectura</span>
-                        <span className="text-white font-semibold text-xs">
-                          {result.procesamiento.architecture} + {result.procesamiento.encoder}
-                        </span>
-                      </div>
-                      
-                      <div className="flex justify-between items-center bg-slate-900/50 border border-slate-700 rounded-lg p-3">
-                        <span className="text-slate-400">TTA</span>
-                        <span className={`font-semibold ${result.procesamiento.tta_usado ? 'text-cyan-400' : 'text-slate-400'}`}>
-                          {result.procesamiento.tta_usado ? `✓ ${result.procesamiento.tta_transforms}x` : '✗ Desactivado'}
-                        </span>
-                      </div>
-                      
-                      <div className="flex justify-between items-center bg-slate-900/50 border border-slate-700 rounded-lg p-3">
-                        <span className="text-slate-400">Análisis Morfológico</span>
-                        <span className={`font-semibold ${result.procesamiento.morphological_analysis ? 'text-green-400' : 'text-slate-400'}`}>
-                          {result.procesamiento.morphological_analysis ? '✓ Activado' : '✗ Desactivado'}
-                        </span>
-                      </div>
-                      
-                      <div className="flex justify-between items-center bg-slate-900/50 border border-slate-700 rounded-lg p-3">
-                        <span className="text-slate-400">Timestamp</span>
-                        <span className="text-white font-mono text-xs">
-                          {new Date(result.timestamp).toLocaleString('es-PE')}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         </div>

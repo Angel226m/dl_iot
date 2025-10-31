@@ -22,7 +22,7 @@ const Footer = () => {
           <div>
             <h4 className="text-lg font-semibold text-cyan-400 mb-4">Equipo de Desarrollo</h4>
             <ul className="space-y-2 text-slate-400 text-sm sm:text-base">
-              {['Garay Torres Angel', 'Figueroa Quiroz Dario', 'Borjas Espinoza Pierre', 'Conca Flores Omar'].map((member, index) => (
+              {['Garay Torres Angel', 'Serrano Arias Luis', 'Huari Mora Shandel', 'Cama Sanchez Kevin'].map((member, index) => (
                 <li key={index} className="hover:text-cyan-400 transition-colors duration-300">
                   {member}
                 </li>

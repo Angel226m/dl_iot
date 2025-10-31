@@ -342,11 +342,11 @@ const Funcionamiento = () => {
       subtitle: 'Captura y Adquisición de Datos',
       technology: 'Raspberry Pi 4 + Arducam',
       color: 'from-cyan-500 to-blue-600',
-      description: 'Infraestructura IoT para captura de imágenes en tiempo real con alta resolución y simulación de entornos. Integra sensores ambientales para correlacionar datos externos, optimizando la calidad de las imágenes para análisis de grietas.',
+      description: 'Infraestructura IoT para captura de imágenes en alta resolución en tiempo real, con simulación de entornos para correlación de datos externos. Optimiza la calidad visual para análisis preciso de grietas mediante procesamiento contextual y enriquecimiento de datos.',
       features: [
         'Raspberry Pi 4 (8GB RAM, Quad-Core Cortex-A72)',
         'Cámara Arducam 1080p con soporte HDR',
-        'Sensores de temperatura y humedad para contexto ambiental',
+        'Conexión WiFi para transmisión de datos',
         'Simulación de captura para pruebas en entornos controlados',
         'Soporte para formatos PNG, JPG, BMP, TIFF (máx. 20MB)',
       ],

@@ -3,9 +3,9 @@ import { Shield, Cpu, Cloud, AlertTriangle, DollarSign, Clock, Users, TrendingDo
 const Inicio = () => {
   const team = [
     'Garay Torres Angel',
-    'Figueroa Quiroz Dario',
-    'Borjas Espinoza Pierre',
-    'Conca Flores Omar'
+    'Serrrano Arias Luis', //'Figueroa Quiroz Dario',
+    'Huari Mora Shandel',//'Borjas Espinoza Pierre',
+    'Cama Sanchez Kevin'//'Conca Flores Omar'
   ]
 
   const problems = [

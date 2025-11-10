@@ -33,5 +33,5 @@ EXPOSE 5000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD python -c "import requests; requests.get('http://localhost:5000/health')"
 
-# Comando para ejecutar
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--timeout", "120", "--access-logfile", "-", "--error-logfile", "-", "app:app"]
+# ✅ COMANDO CORREGIDO PARA SOCKETIO (sin gunicorn)
+CMD ["python", "app.py"]

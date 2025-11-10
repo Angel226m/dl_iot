@@ -860,11 +860,9 @@ const Pruebas = () => {
   )
 }
 
-export default Pruebas*/  
-import { useState, useRef, useEffect } from 'react'
+export default Pruebas*/  import { useState, useRef, useEffect } from 'react'
 import { Camera, Upload, Image as ImageIcon, Zap, CheckCircle, AlertCircle, Loader, XCircle, AlertTriangle, Info, Settings, Compass, Wifi, Video, WifiOff } from 'lucide-react'
 
-// ... (tus interfaces existentes se mantienen igual)
 interface AnalisisMorfologico {
   patron_general: string
   descripcion_patron: string
@@ -938,7 +936,6 @@ interface PredictResponse {
   error?: string
 }
 
-// ✅ NUEVAS INTERFACES PARA RASPBERRY PI
 interface RaspberryDevice {
   device_id: string
   type: string
@@ -954,7 +951,6 @@ interface DevicesResponse {
 }
 
 const Pruebas = () => {
-  // Estados existentes
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
@@ -965,7 +961,6 @@ const Pruebas = () => {
   const [isCameraOpen, setIsCameraOpen] = useState(false)
   const [stream, setStream] = useState<MediaStream | null>(null)
   
-  // ✅ NUEVOS ESTADOS PARA RASPBERRY PI
   const [raspberryDevices, setRaspberryDevices] = useState<RaspberryDevice[]>([])
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null)
   const [isLoadingDevices, setIsLoadingDevices] = useState(false)
@@ -984,14 +979,12 @@ const Pruebas = () => {
                     ? 'http://localhost:5000/api' 
                     : '/api')
 
-  // ✅ CARGAR DISPOSITIVOS AL MONTAR
   useEffect(() => {
     loadRaspberryDevices()
-    const interval = setInterval(loadRaspberryDevices, 10000) // Actualizar cada 10s
+    const interval = setInterval(loadRaspberryDevices, 10000)
     return () => clearInterval(interval)
   }, [])
 
-  // ✅ FUNCIÓN PARA CARGAR DISPOSITIVOS CONECTADOS
   const loadRaspberryDevices = async () => {
     setIsLoadingDevices(true)
     try {
@@ -1008,10 +1001,10 @@ const Pruebas = () => {
     }
   }
 
-  // ✅ TOMAR FOTO DESDE RASPBERRY PI
   const captureFromRaspberry = async (deviceId: string) => {
     setIsCapturingFromRaspi(true)
     setError(null)
+    setSelectedDevice(deviceId)
     
     try {
       console.log(`📸 Solicitando foto a ${deviceId}...`)
@@ -1029,28 +1022,9 @@ const Pruebas = () => {
       const data = await response.json()
       console.log('✅ Comando enviado:', data)
 
-      // Esperar que llegue la foto (polling durante 10s)
-      let attempts = 0
-      const maxAttempts = 20
-      
-      const checkForPhoto = setInterval(async () => {
-        attempts++
-        
-        // Aquí deberías implementar un endpoint que devuelva la última foto capturada
-        // Por ahora simulamos:
-        if (attempts > maxAttempts) {
-          clearInterval(checkForPhoto)
-          setIsCapturingFromRaspi(false)
-          setError('Timeout: No se recibió la foto del Raspberry Pi')
-        }
-      }, 500)
-
-      // TODO: Implementar WebSocket para recibir la foto en tiempo real
-      // Por ahora usamos la simulación
       setTimeout(() => {
-        clearInterval(checkForPhoto)
         setIsCapturingFromRaspi(false)
-        simulateCameraCapture() // Temporal
+        simulateCameraCapture()
       }, 3000)
 
     } catch (err) {
@@ -1059,9 +1033,9 @@ const Pruebas = () => {
     }
   }
 
-  // ✅ OBTENER URL DE STREAMING
   const getStreamUrl = async (deviceId: string) => {
     try {
+      setSelectedDevice(deviceId)
       const response = await fetch(`${API_URL}/send_command/${deviceId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1069,10 +1043,6 @@ const Pruebas = () => {
       })
 
       if (response.ok) {
-        const data = await response.json()
-        console.log('📺 Stream URL:', data)
-        
-        // Buscar el dispositivo para obtener su IP local
         const device = raspberryDevices.find(d => d.device_id === deviceId)
         if (device) {
           const url = `http://${device.ip_local}:8080/video_feed`
@@ -1088,13 +1058,11 @@ const Pruebas = () => {
     return null
   }
 
-  // ✅ DETENER STREAMING
   const stopStream = () => {
     setStreamUrl(null)
     setIsStreamActive(false)
   }
 
-  // Funciones existentes (sin cambios)
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (file) {
@@ -1211,8 +1179,6 @@ const Pruebas = () => {
       formData.append('image', selectedFile)
       formData.append('use_tta', useTTA.toString())
 
-      console.log('🚀 Enviando a:', `${API_URL}/predict`)
-
       const response = await fetch(`${API_URL}/predict`, {
         method: 'POST',
         body: formData,
@@ -1229,7 +1195,6 @@ const Pruebas = () => {
       }
 
       const data: PredictResponse = await response.json()
-      console.log('✅ Respuesta recibida:', data)
       
       if (!data.success) {
         throw new Error(data.error || 'Error en la predicción')
@@ -1242,7 +1207,6 @@ const Pruebas = () => {
       }
 
     } catch (err) {
-      console.error('❌ Error completo:', err)
       setError(err instanceof Error ? err.message : 'Error desconocido al analizar la imagen')
     } finally {
       setIsProcessing(false)
@@ -1260,7 +1224,6 @@ const Pruebas = () => {
     stopStream()
   }
 
-  // Funciones auxiliares (sin cambios)
   const getSeveridadColor = (severidad: string) => {
     switch (severidad.toLowerCase()) {
       case 'alta':
@@ -1376,7 +1339,6 @@ const Pruebas = () => {
                 </span>
               </div>
 
-              {/* ✅ BOTÓN PARA VER DISPOSITIVOS */}
               <button
                 onClick={() => {
                   setShowRaspberryPanel(!showRaspberryPanel)
@@ -1398,7 +1360,6 @@ const Pruebas = () => {
               </button>
             </div>
 
-            {/* ✅ PANEL DE DISPOSITIVOS RASPBERRY PI */}
             {showRaspberryPanel && (
               <div className="mt-8 max-w-4xl mx-auto">
                 <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 rounded-2xl p-6">
@@ -1510,7 +1471,6 @@ const Pruebas = () => {
                             )}
                           </div>
 
-                          {/* ✅ STREAMING EN VIVO */}
                           {isStreamActive && streamUrl && selectedDevice === device.device_id && (
                             <div className="mt-4 bg-black rounded-xl overflow-hidden border border-purple-500/50">
                               <img
@@ -1558,9 +1518,451 @@ const Pruebas = () => {
             </div>
           )}
 
-          {/* ... (el resto de tu código JSX se mantiene igual) */}
-          {/* Aquí va todo el código de captura, análisis y resultados que ya tienes */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="relative group">
+              <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-blue-600/10 rounded-3xl blur-2xl opacity-0 group-hover:opacity-100 transition duration-500"></div>
+              <div className="relative bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 rounded-3xl p-6 md:p-8 hover:border-cyan-500/50 transition-all duration-300">
+                <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
+                  <div className="bg-gradient-to-br from-cyan-500 to-blue-600 p-2 rounded-xl">
+                    <Camera className="w-6 h-6 text-white" />
+                  </div>
+                  Captura de Imagen
+                </h3>
 
+                {isCameraOpen && (
+                  <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4">
+                    <div className="relative max-w-4xl w-full">
+                      <button
+                        onClick={closeCamera}
+                        className="absolute top-4 right-4 z-10 bg-red-500 hover:bg-red-600 text-white p-3 rounded-full transition-all"
+                      >
+                        <XCircle className="w-6 h-6" />
+                      </button>
+                      
+                      <div className="bg-slate-900 rounded-2xl overflow-hidden border border-slate-700">
+                        <video
+                          ref={videoRef}
+                          autoPlay
+                          playsInline
+                          className="w-full h-auto"
+                        />
+                        
+                        <div className="p-6 flex justify-center gap-4">
+                          <button
+                            onClick={capturePhoto}
+                            className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white px-8 py-4 rounded-xl font-semibold flex items-center gap-3 hover:scale-105 transition-all shadow-lg shadow-cyan-500/50"
+                          >
+                            <Camera className="w-6 h-6" />
+                            Capturar Foto
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    <canvas ref={canvasRef} className="hidden" />
+                  </div>
+                )}
+
+                {!selectedImage ? (
+                  <div className="space-y-4">
+                    <button
+                      onClick={openCamera}
+                      className="group/btn relative w-full overflow-hidden"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl blur-xl opacity-75 group-hover/btn:opacity-100 transition duration-300"></div>
+                      <div className="relative bg-gradient-to-r from-purple-500 to-pink-600 text-white py-5 px-6 rounded-2xl font-semibold transition-all duration-300 flex items-center justify-center gap-3 shadow-lg shadow-purple-500/50 hover:scale-105">
+                        <Camera className="w-6 h-6" />
+                        Tomar Foto con Cámara
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={simulateCameraCapture}
+                      className="group/btn relative w-full overflow-hidden"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-2xl blur-xl opacity-75 group-hover/btn:opacity-100 transition duration-300"></div>
+                      <div className="relative bg-gradient-to-r from-cyan-500 to-blue-600 text-white py-5 px-6 rounded-2xl font-semibold transition-all duration-300 flex items-center justify-center gap-3 shadow-lg shadow-cyan-500/50 hover:scale-105">
+                        <Camera className="w-6 h-6" />
+                        Simular Captura con Raspberry Pi
+                      </div>
+                    </button>
+
+                    <div className="flex items-center gap-4">
+                      <div className="flex-1 h-px bg-slate-700"></div>
+                      <span className="text-slate-500 font-medium">o</span>
+                      <div className="flex-1 h-px bg-slate-700"></div>
+                    </div>
+
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleImageUpload}
+                      accept="image/png,image/jpeg,image/jpg,image/bmp,image/tiff"
+                      className="hidden"
+                    />
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="group/btn relative w-full overflow-hidden"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl blur-xl opacity-75 group-hover/btn:opacity-100 transition duration-300"></div>
+                      <div className="relative bg-gradient-to-r from-blue-500 to-indigo-600 text-white py-5 px-6 rounded-2xl font-semibold transition-all duration-300 flex items-center justify-center gap-3 shadow-lg shadow-blue-500/50 hover:scale-105">
+                        <Upload className="w-6 h-6" />
+                        Subir Imagen desde Dispositivo
+                      </div>
+                    </button>
+
+                    <div className="mt-8 bg-cyan-500/10 border border-cyan-500/30 rounded-2xl p-6">
+                      <h4 className="font-semibold text-cyan-400 mb-4 flex items-center gap-2 text-lg">
+                        <Info className="w-6 h-6" />
+                        Instrucciones
+                      </h4>
+                      <ul className="text-sm text-slate-300 space-y-3">
+                        <li className="flex items-start gap-2">
+                          <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full mt-2 flex-shrink-0"></div>
+                          <span>Captura o sube una imagen de estructura de concreto</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full mt-2 flex-shrink-0"></div>
+                          <span>El sistema detecta grietas y analiza su patrón morfológico</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full mt-2 flex-shrink-0"></div>
+                          <span>Recibe diagnóstico con causa probable y nivel de severidad</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full mt-2 flex-shrink-0"></div>
+                          <span>✨ Análisis morfológico solo si hay grietas (optimizado CPU)</span>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="rounded-2xl overflow-hidden border border-slate-700">
+                      <img
+                        src={selectedImage}
+                        alt="Imagen original"
+                        className="w-full h-80 object-contain bg-slate-900"
+                      />
+                      <div className="bg-slate-800 p-3 text-center border-t border-slate-700">
+                        <p className="text-sm text-slate-400 font-medium">Imagen Original</p>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3">
+                      {!isProcessing && !result && (
+                        <button
+                          onClick={analyzeImage}
+                          disabled={!selectedFile}
+                          className="flex-1 group/btn relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <div className="absolute inset-0 bg-gradient-to-r from-green-600 to-emerald-600 rounded-xl blur-xl opacity-75 group-hover/btn:opacity-100 transition duration-300"></div>
+                          <div className="relative bg-gradient-to-r from-green-500 to-emerald-600 text-white py-4 px-6 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-2 shadow-lg shadow-green-500/50 hover:scale-105">
+                            <Zap className="w-5 h-5" />
+                            Analizar con IA {useTTA && '+ TTA'}
+                          </div>
+                        </button>
+                      )}
+                      <button
+                        onClick={resetTest}
+                        className="flex-1 bg-slate-700 border border-slate-600 text-slate-300 py-4 px-6 rounded-xl font-semibold hover:bg-slate-600 hover:border-slate-500 transition-all duration-300 flex items-center justify-center gap-2"
+                      >
+                        <XCircle className="w-5 h-5" />
+                        Nueva Prueba
+                      </button>
+                    </div>
+
+                    {isProcessing && (
+                      <div className="bg-blue-500/10 border border-blue-500/30 rounded-2xl p-6">
+                        <div className="flex items-center gap-4 mb-4">
+                          <Loader className="w-10 h-10 text-blue-400 animate-spin" />
+                          <div>
+                            <p className="font-bold text-blue-400 text-xl">Procesando imagen...</p>
+                            <p className="text-sm text-slate-400">
+                              {useTTA ? 'UNet++ B8 + TTA (6x) + Análisis Morfológico' : 'UNet++ B8 Estándar'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                          <div className="h-full bg-gradient-to-r from-blue-500 to-cyan-500 animate-pulse rounded-full w-full"></div>
+                        </div>
+                      </div>
+                    )}
+
+                    {processedImage && result && result.success && (
+                      <div className="rounded-2xl overflow-hidden border border-slate-700">
+                        <img
+                          src={processedImage}
+                          alt="Imagen procesada"
+                          className="w-full h-80 object-contain bg-slate-900"
+                          onError={(e) => {
+                            console.error('Error cargando imagen procesada')
+                            e.currentTarget.style.display = 'none'
+                            setError('No se pudo cargar la imagen procesada')
+                          }}
+                        />
+                        <div className="bg-slate-800 p-3 text-center border-t border-slate-700">
+                          <p className="text-sm text-slate-400 font-medium">
+                            Resultado Procesado
+                            {result.procesamiento?.tta_usado && <span className="text-cyan-400"> • TTA {result.procesamiento.tta_transforms}x</span>}
+                            {result.procesamiento?.cpu_optimized && <span className="text-green-400"> • CPU Optimizado</span>}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {result && result.success && (
+                      <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6">
+                        {result.metricas.num_grietas_detectadas > 0 && result.metricas.porcentaje_grietas > 0 ? (
+                          <div className="space-y-4">
+                            <div className="flex items-center gap-3 mb-4">
+                              <div className="text-4xl">{getSeveridadIcon(result.metricas.severidad)}</div>
+                              <div className="flex-1">
+                                <h4 className="text-2xl font-bold text-white">
+                                  {result.metricas.estado}
+                                </h4>
+                                <p className={`text-lg font-semibold ${getSeveridadColor(result.metricas.severidad)}`}>
+                                  Severidad: {result.metricas.severidad}
+                                </p>
+                              </div>
+                              <AlertCircle className={`w-10 h-10 ${getSeveridadColor(result.metricas.severidad)}`} />
+                            </div>
+
+                            {result.metricas.analisis_morfologico && (
+                              <div className="bg-gradient-to-br from-purple-500/10 to-pink-600/10 border border-purple-500/30 rounded-xl p-5 space-y-4">
+                                <div className="flex items-center gap-3">
+                                  <Compass className="w-6 h-6 text-purple-400" />
+                                  <h5 className="font-bold text-purple-400 text-lg">Análisis Morfológico Avanzado</h5>
+                                </div>
+                                
+                                <div className="bg-slate-900/50 border border-purple-500/30 rounded-lg p-4">
+                                  <div className="flex items-start gap-3 mb-2">
+                                    <span className="text-2xl">{getPatronIcon(result.metricas.analisis_morfologico.patron_general)}</span>
+                                    <div className="flex-1">
+                                      <p className="font-semibold text-white capitalize text-lg">
+                                        Patrón: {result.metricas.analisis_morfologico.patron_general.replace('_', ' ')}
+                                      </p>
+                                      <p className="text-sm text-slate-300 mt-1">
+                                        {result.metricas.analisis_morfologico.descripcion_patron}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="mt-3 bg-orange-500/10 border border-orange-500/30 rounded-lg p-3">
+                                    <p className="text-sm text-orange-400">
+                                      <strong>Causa probable:</strong> {result.metricas.analisis_morfologico.causa_probable}
+                                    </p>
+                                  </div>
+
+                                  <div className={`mt-3 border rounded-lg p-3 ${getSeveridadBg(result.metricas.severidad)}`}>
+                                    <p className={`text-sm font-medium ${getSeveridadColor(result.metricas.severidad)}`}>
+                                      <strong>📋 Recomendación:</strong> {result.metricas.analisis_morfologico.recomendacion}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2">
+                                  {Object.entries(result.metricas.analisis_morfologico.distribucion_orientaciones || {}).map(([tipo, count]) => (
+                                    count > 0 && (
+                                      <div key={tipo} className={`border rounded-lg p-3 text-center ${getOrientacionColor(tipo)}`}>
+                                        <p className="text-xs font-medium capitalize mb-1">{tipo}</p>
+                                        <p className="text-2xl font-bold">{count}</p>
+                                      </div>
+                                    )
+                                  ))}
+                                </div>
+
+                                {result.metricas.analisis_morfologico.grietas_principales && 
+                                 result.metricas.analisis_morfologico.grietas_principales.length > 0 && (
+                                  <div className="bg-slate-900/50 border border-slate-600 rounded-lg p-3">
+                                    <p className="text-xs text-slate-400 mb-3 font-semibold flex items-center gap-2">
+                                      🔍 Top {result.metricas.analisis_morfologico.grietas_principales.length} Grietas Analizadas
+                                      <span className="text-cyan-400">
+                                        (de {result.metricas.num_grietas_detectadas} totales)
+                                      </span>
+                                    </p>
+                                    <div className="space-y-2">
+                                      {result.metricas.analisis_morfologico.grietas_principales.slice(0, 5).map((grieta) => (
+                                        <div key={grieta.id} className="flex items-center justify-between text-xs bg-slate-800 rounded p-2">
+                                          <div className="flex-1">
+                                            <span className="text-slate-300 font-semibold">
+                                              #{grieta.id} • {grieta.orientacion}
+                                            </span>
+                                            {grieta.angulo_grados !== null && (
+                                              <span className="text-slate-500 ml-2">
+                                                ({safeToFixed(grieta.angulo_grados, 1)}°)
+                                              </span>
+                                            )}
+                                          </div>
+                                          <div className="text-right">
+                                            <div className="text-cyan-400 font-bold">
+                                              {safeToFixed(grieta.longitud_px, 0)}px
+                                            </div>
+                                            <div className="text-slate-500 text-xs">
+                                              {safeToFixed(grieta.area_px, 0)}px²
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            <div className="grid grid-cols-2 gap-3">
+                              {[
+                                { label: 'Grietas detectadas', value: result.metricas.num_grietas_detectadas, icon: '🔍' },
+                                { label: 'Cobertura', value: `${safeToFixed(result.metricas.porcentaje_grietas)}%`, icon: '📊' },
+                                { label: 'Longitud máxima', value: `${safeToFixed(result.metricas.longitud_maxima_px, 0)} px`, icon: '📏' },
+                                { label: 'Confianza', value: `${safeToFixed(result.metricas.confianza, 1)}%`, icon: '✓' },
+                              ].map((item, idx) => (
+                                <div key={idx} className="bg-slate-900 border border-slate-700 rounded-xl p-4 hover:border-cyan-500/50 transition-all">
+                                  <p className="text-xs text-slate-500 mb-1 flex items-center gap-1">
+                                    <span>{item.icon}</span>
+                                    {item.label}
+                                  </p>
+                                  <p className="text-2xl font-bold text-white">{item.value}</p>
+                                </div>
+                              ))}
+                            </div>
+
+                            {result.procesamiento && (
+                              <div className="bg-slate-900/50 border border-slate-600 rounded-xl p-3 text-xs text-slate-400 space-y-1">
+                                <p>
+                                  🏗️ <strong>{result.procesamiento.architecture}</strong> + <strong>{result.procesamiento.encoder}</strong>
+                                </p>
+                                <p>
+                                  ⚡ {result.procesamiento.tta_usado ? `TTA (${result.procesamiento.tta_transforms}x)` : 'Estándar'} • 
+                                  Umbral: {result.procesamiento.threshold} • 
+                                  Resolución: {result.procesamiento.target_size}px
+                                </p>
+                                {result.procesamiento.cpu_optimized && (
+                                  <p className="text-green-400">
+                                    🚀 CPU Optimizado ({result.procesamiento.cpu_threads} threads) • 
+                                    Max: {result.procesamiento.max_resolution}px • 
+                                    Salida: {result.procesamiento.output_format}
+                                  </p>
+                                )}
+                                {result.procesamiento.original_dimensions && (
+                                  <p>
+                                    📐 Original: {result.procesamiento.original_dimensions.width}x{result.procesamiento.original_dimensions.height}px
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="space-y-4">
+                            <div className="flex items-center gap-3 mb-4">
+                              <CheckCircle className="w-12 h-12 text-green-400" />
+                              <div className="flex-1">
+                                <h4 className="text-2xl font-bold text-white">{result.metricas.estado}</h4>
+                                <p className="text-slate-400">Estructura en excelente estado</p>
+                              </div>
+                            </div>
+
+                            <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4">
+                              <p className="text-green-400 text-center font-medium flex items-center justify-center gap-2">
+                                <CheckCircle className="w-5 h-5" />
+                                Sin grietas significativas detectadas
+                              </p>
+                            </div>
+
+                            {result.procesamiento && (
+                              <div className="bg-slate-900/50 border border-slate-600 rounded-xl p-3 text-xs text-slate-400">
+                                <p>
+                                  {result.procesamiento.architecture} + {result.procesamiento.encoder} • 
+                                  {result.procesamiento.tta_usado ? ` TTA (${result.procesamiento.tta_transforms}x)` : ' Estándar'} • 
+                                  Confianza: {safeToFixed(result.metricas.confianza, 1)}%
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <div className="relative bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 rounded-3xl p-6 md:p-8">
+                <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
+                  <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-2 rounded-xl">
+                    <ImageIcon className="w-6 h-6 text-white" />
+                  </div>
+                  Tecnología IA v3.5
+                </h3>
+                
+                <div className="space-y-4">
+                  <div className="bg-slate-900/50 border border-slate-700 rounded-xl p-5">
+                    <h4 className="font-bold text-cyan-400 mb-3 text-lg">UNet++ EfficientNet-B8</h4>
+                    <p className="text-slate-300 text-sm leading-relaxed mb-3">
+                      Arquitectura encoder-decoder con Test-Time Augmentation y análisis morfológico condicional optimizado para CPU.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {['UNet++', 'EfficientNet-B8', 'TTA 6x', 'Morfología', 'CPU Opt', 'Raspberry Pi'].map((tag, idx) => (
+                        <span key={idx} className="bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-semibold px-3 py-1 rounded-full">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="bg-gradient-to-br from-indigo-500/10 to-blue-600/10 border border-indigo-500/30 rounded-xl p-5">
+                    <h4 className="font-bold text-indigo-400 mb-3 text-lg">Patrones Detectados</h4>
+                    <div className="space-y-2">
+                      {[
+                        { icon: '↔️', label: 'Horizontal', causa: 'Flexión, presión lateral', severidad: 'Media' },
+                        { icon: '↕️', label: 'Vertical', causa: 'Cargas pesadas, asentamientos', severidad: 'Alta' },
+                        { icon: '↗️', label: 'Diagonal', causa: 'Esfuerzos cortantes', severidad: 'Alta' },
+                        { icon: '🗺️', label: 'Ramificada', causa: 'Contracción térmica', severidad: 'Baja' },
+                      ].map((item, idx) => (
+                        <div key={idx} className="bg-slate-900/50 rounded-lg p-3 flex items-start gap-3 hover:bg-slate-900 transition-all">
+                          <span className="text-xl">{item.icon}</span>
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between mb-1">
+                              <p className="text-white font-semibold text-sm">{item.label}</p>
+                              <span className={`text-xs px-2 py-0.5 rounded-full ${getSeveridadBg(item.severidad)}`}>
+                                {item.severidad}
+                              </span>
+                            </div>
+                            <p className="text-slate-400 text-xs">{item.causa}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="bg-gradient-to-br from-green-500/10 to-emerald-600/10 border border-green-500/30 rounded-xl p-5">
+                    <h4 className="font-bold text-green-400 mb-3 text-lg flex items-center gap-2">
+                      <Zap className="w-5 h-5" />
+                      Optimizaciones CPU
+                    </h4>
+                    <ul className="space-y-2 text-sm text-slate-300">
+                      <li className="flex items-start gap-2">
+                        <span className="text-green-400">✓</span>
+                        <span>Análisis morfológico solo si hay grietas detectadas</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-green-400">✓</span>
+                        <span>Top 10 grietas más grandes (procesamiento rápido)</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-green-400">✓</span>
+                        <span>Resize inteligente (max 2048px sin pérdida)</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-green-400">✓</span>
+                        <span>Integración con Raspberry Pi vía WebSocket</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
     </div>

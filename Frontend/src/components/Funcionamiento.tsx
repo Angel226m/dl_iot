@@ -364,7 +364,7 @@ const Funcionamiento = () => {
       color: 'from-blue-500 to-indigo-600',
       description: 'Backend robusto para procesamiento de imágenes con modelos de deep learning avanzados. Implementa UNet++ con EfficientNet-B8, Test-Time Augmentation (TTA) y análisis morfológico para una detección precisa de grietas.',
       features: [
-        'API REST con Flask para predicciones en tiempo real',
+        'API REST con1 Flask para predicciones en tiempo real',
         'Modelo UNet++ con backbone EfficientNet-B8',
         'TTA con 6 transformaciones para mayor precisión',
         'Análisis morfológico avanzado (patrones, orientaciones, severidad)',

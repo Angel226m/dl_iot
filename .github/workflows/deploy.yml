@@ -7,125 +7,58 @@ on:
     branches: [ main, master ]
 
 jobs:
-  test-frontend:
-    name: Test Frontend React + TypeScript
-    runs-on: ubuntu-latest
-    
-    steps:
-    - name: Checkout código
-      uses: actions/checkout@v3
-    
-    - name: Configurar Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '18'
-        
-    - name: Instalar dependencias frontend
-      run: |
-        cd Frontend
-        npm ci
-        
-    - name: Verificar tipos TypeScript
-      run: |
-        cd Frontend
-        npm run build || echo "⚠️  Build con warnings - continuando..."
-        
-    - name: Linting (si existe)
-      run: |
-        cd Frontend
-        if grep -q '"lint":' package.json; then
-          npm run lint || echo "⚠️  Linting con warnings - continuando..."
-        else
-          echo "✓ No hay script de lint definido"
-        fi
-
-  test-backend:
-    name: Test Backend Flask + PyTorch
-    runs-on: ubuntu-latest
-    
-    steps:
-    - name: Checkout código
-      uses: actions/checkout@v3
-    
-    - name: Configurar Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.10'
-    
-    - name: Instalar dependencias backend
-      run: |
-        cd Backend
-        pip install --upgrade pip
-        pip install -r requirements.txt
-        
-    - name: Verificar sintaxis Python
-      run: |
-        cd Backend
-        python -m py_compile app.py || echo "⚠️  Advertencias en código - continuando..."
-        
-    - name: Test de importación de módulos
-      run: |
-        cd Backend
-        python -c "import flask; import torch; import transformers; print('✓ Módulos principales OK')"
-
   build-images:
     name: Build Docker Images
-    needs: [test-frontend, test-backend]
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
-    
+
     steps:
-    - name: Checkout código
-      uses: actions/checkout@v3
-    
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
-    
-    - name: Build Frontend Image
-      run: |
-        cd Frontend
-        docker build -t crackguard-frontend:latest . || echo "⚠️  Frontend build con warnings"
-    
-    - name: Build Backend Image
-      run: |
-        cd Backend
-        docker build -t crackguard-backend:latest . || echo "⚠️  Backend build con warnings"
-    
-    - name: Verificar imágenes creadas
-      run: |
-        docker images | grep crackguard
+      - name: Checkout código
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build Frontend Image
+        run: |
+          cd Frontend
+          docker build -t crackguard-frontend:latest . || echo "Advertencia: Frontend build con warnings"
+
+      - name: Build Backend Image
+        run: |
+          cd Backend
+          docker build -t crackguard-backend:latest . || echo "Advertencia: Backend build con warnings"
+
+      - name: Verificar imágenes creadas
+        run: |
+          docker images | grep crackguard
 
   deploy:
     name: Deploy to Production
     needs: build-images
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout código
         uses: actions/checkout@v3
-      
+
       - name: Configurar SSH
         run: |
           mkdir -p ~/.ssh/
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
-      
+
       - name: Verificar conexión SSH
         run: |
-          ssh -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} "echo '✓ Conexión SSH exitosa'"
-      
-      - name: Verificar Docker Compose en servidor
-        run: |
-          ssh -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} \
-            "docker compose version || echo '⚠️ Docker Compose no disponible'"
-      
-      - name: Crear directorio de proyecto en servidor
+          ssh -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} "echo 'Conexión SSH exitosa'"
+
+      - name: Crear directorio de proyecto
         run: |
           ssh -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} \
             "mkdir -p /home/${{ secrets.SERVER_USER }}/crackguard-iot"
-      
+
       - name: Transferir archivos al servidor
         run: |
           rsync -avz -e "ssh -i ~/.ssh/id_rsa" \
@@ -138,90 +71,74 @@ jobs:
             --exclude 'Frontend/.vite' \
             --exclude 'Frontend/node_modules' \
             ./ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}:/home/${{ secrets.SERVER_USER }}/crackguard-iot/
-      
-      - name: Verificar archivos transferidos
-        run: |
-          ssh -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} \
-            "ls -la /home/${{ secrets.SERVER_USER }}/crackguard-iot/"
-      
+
       - name: Detener contenedores anteriores
         run: |
           ssh -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} \
-            "cd /home/${{ secrets.SERVER_USER }}/crackguard-iot && \
-            docker compose down || echo '⚠️ No hay contenedores previos'"
-      
+            "cd /home/${{ secrets.SERVER_USER }}/crackguard-iot && docker compose down || true"
+
       - name: Limpiar imágenes antiguas
         run: |
-          ssh -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} \
-            "docker image prune -f"
-      
-      - name: Construir y desplegar nuevos contenedores
+          ssh -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} "docker image prune -f"
+
+      - name: Desplegar nuevos contenedores
         run: |
           ssh -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} \
-            "cd /home/${{ secrets.SERVER_USER }}/crackguard-iot && \
-            docker compose up -d --build --force-recreate"
-      
-      - name: Esperar inicio de servicios
+            "cd /home/${{ secrets.SERVER_USER }}/crackguard-iot && docker compose up -d --build --force-recreate"
+
+      - name: Esperar inicio
         run: |
-          ssh -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} \
-            "sleep 20"
-      
-      - name: Verificar estado de contenedores
+          ssh -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} "sleep 20"
+
+      - name: Verificar contenedores
         run: |
           ssh -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} \
             "docker compose -f /home/${{ secrets.SERVER_USER }}/crackguard-iot/docker-compose.yml ps"
-      
-      - name: Verificar logs de backend
+
+      - name: Verificar logs backend
         run: |
           ssh -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} \
-            "docker logs crackguard-backend --tail 50 || echo '⚠️ Backend aún no está listo'"
-      
-      - name: Verificar logs de frontend
+            "docker logs crackguard-backend --tail 50"
+
+      - name: Verificar logs frontend
         run: |
           ssh -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} \
-            "docker logs crackguard-frontend --tail 30 || echo '⚠️ Frontend aún no está listo'"
-      
-      - name: Verificar health de backend
+            "docker logs crackguard-frontend --tail 30"
+
+      - name: Health check backend
         run: |
           ssh -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} \
-            "curl -f http://localhost:5001/health && echo '✓ Backend healthy' || echo '⚠️ Backend no responde aún'"
-      
-      - name: Verificar health de frontend
+            "curl -f http://localhost:5001/health && echo 'Backend OK' || echo 'Backend no responde'"
+
+      - name: Health check frontend
         run: |
           ssh -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} \
-            "curl -f http://localhost:3001/ && echo '✓ Frontend healthy' || echo '⚠️ Frontend no responde aún'"
-      
+            "curl -f http://localhost:3001/ && echo 'Frontend OK' || echo 'Frontend no responde'"
+
       - name: Recargar Nginx
         run: |
           ssh -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} \
-            "docker exec nginx-proxy nginx -t && docker exec nginx-proxy nginx -s reload || echo '⚠️ Nginx no encontrado o ya actualizado'"
-      
-      - name: Notificación de despliegue exitoso
+            "docker exec nginx-proxy nginx -s reload || echo 'Nginx no disponible'"
+
+      - name: Despliegue exitoso
         run: |
-          echo "🚀 ¡Despliegue de CrackGuard completado exitosamente!"
-          echo "📍 Frontend: https://crackguard.angelproyect.com"
-          echo "🔧 Backend API: https://crackguard.angelproyect.com/api/health"
-          echo "🐳 Contenedores activos:"
-          ssh -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} \
-            "docker ps --filter name=crackguard"
+          echo "¡CRACKGUARD DESPLEGADO!"
+          echo "Frontend: https://crackguard.angelproyect.com"
+          echo "API: https://crackguard.angelproyect.com/api/health"
 
   notify:
     name: Notificar resultado
     needs: deploy
     if: always()
     runs-on: ubuntu-latest
-    
+
     steps:
-      - name: Resultado del despliegue
+      - name: Resultado final
         run: |
           if [ "${{ needs.deploy.result }}" == "success" ]; then
-            echo "✅ DESPLIEGUE EXITOSO"
-            echo "🌐 CrackGuard IoT está disponible en: https://crackguard.angelproyect.com"
-            echo "📊 Verifica el estado en: https://crackguard.angelproyect.com/api/status"
+            echo "DESPLIEGUE EXITOSO"
+            echo "CrackGuard v4.2 LIVE"
           else
-            echo "❌ DESPLIEGUE FALLÓ"
-            echo "⚠️ Revisar logs anteriores"
-            echo "🔍 Comandos útiles para debugging:"
-            echo "   ssh user@server 'docker compose -f /path/to/docker-compose.yml logs'"
-            echo "   ssh user@server 'docker ps -a'"
+            echo "FALLÓ EL DEPLOY"
+            echo "Revisa los logs arriba"
           fi

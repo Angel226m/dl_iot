@@ -14,7 +14,7 @@ RUN apt-get update && apt-get install -y \
     wget \
     && rm -rf /var/lib/apt/lists/*
 
-# Copiar requirements
+# Copiar requirementsd
 COPY requirements.txt .
 
 # Instalar dependencias de Python

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-🎥 RASPBERRY PI CAMERA - CLIENTE WEBSOCKET CRACKGUARD
+🎥 RASPBERRY PI CAMERA - CLIENTE WEBSOCKET CRACKGUARDd
 Conecta con: wss://crackguard.angelproyect.com/ws/raspberry
 """
 

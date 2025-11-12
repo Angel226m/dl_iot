@@ -1095,12 +1095,6 @@ if __name__ == '__main__':
         log_output=True
     )'''
 #!/usr/bin/env python3
-"""
-═══════════════════════════════════════════════════════════════════════════
-CRACKGUARD BACKEND v4.2 - CONTROL TOTAL STREAMING + FOTOS
-Backend con control remoto del streaming MediaMTX + captura de fotos
-═══════════════════════════════════════════════════════════════════════════
-"""
 
 
 

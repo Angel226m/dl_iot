@@ -3758,14 +3758,13 @@ const Pruebas = () => {
 export default Pruebas
 
 
-*/
-'use client'
+*/'use client'
 
 import { useState, useRef, useEffect } from 'react'
 import { 
   Camera, Upload, Image as ImageIcon, Zap, 
   AlertCircle, Loader, XCircle, 
-  AlertTriangle, Info, Settings, Compass, 
+  AlertTriangle, Settings, 
   Wifi, Video, WifiOff, RefreshCw, Globe 
 } from 'lucide-react'
 
@@ -3917,14 +3916,10 @@ const Pruebas = () => {
   const loadRaspberryDevices = async () => {
     setIsLoadingDevices(true)
     try {
-      console.log('Cargando dispositivos desde:', `${API_URL}/api/rpi/devices`)
       const response = await fetch(`${API_URL}/api/rpi/devices`)
       if (response.ok) {
         const data: DevicesResponse = await response.json()
         setRaspberryDevices(data.devices)
-        console.log('Dispositivos conectados:', data.devices)
-      } else {
-        console.error('Error al cargar dispositivos:', response.status)
       }
     } catch (err) {
       console.error('Error al cargar dispositivos:', err)
@@ -3938,11 +3933,8 @@ const Pruebas = () => {
   // ═══════════════════════════════════════════════════════════════════════════
   const handleAuthForAction = (deviceId: string, type: 'capture' | 'stream') => {
     if (authorizedDevice === deviceId) {
-      if (type === 'capture') {
-        captureAndAnalyzeFromRaspberry(deviceId)
-      } else if (type === 'stream') {
-        isStreamActive && selectedDevice === deviceId ? stopStreaming(deviceId) : startStreaming(deviceId)
-      }
+      type === 'capture' ? captureAndAnalyzeFromRaspberry(deviceId) : 
+      (isStreamActive && selectedDevice === deviceId ? stopStreaming(deviceId) : startStreaming(deviceId))
     } else {
       setSelectedDevice(deviceId)
       setActionType(type)
@@ -3956,11 +3948,8 @@ const Pruebas = () => {
     if (passwordInput === '2206' && selectedDevice) {
       setAuthorizedDevice(selectedDevice)
       setShowPasswordModal(false)
-      if (actionType === 'capture') {
-        captureAndAnalyzeFromRaspberry(selectedDevice)
-      } else if (actionType === 'stream') {
-        isStreamActive && selectedDevice ? stopStreaming(selectedDevice) : startStreaming(selectedDevice)
-      }
+      actionType === 'capture' ? captureAndAnalyzeFromRaspberry(selectedDevice) :
+      (isStreamActive && selectedDevice ? stopStreaming(selectedDevice) : startStreaming(selectedDevice))
     } else {
       setPasswordError('Contraseña incorrecta')
     }
@@ -3974,20 +3963,19 @@ const Pruebas = () => {
     setError(null)
     setSelectedDevice(deviceId)
     try {
-      console.log(`Solicitando captura a ${deviceId}...`)
       const cmdResponse = await fetch(`${API_URL}/api/rpi/capture/${deviceId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ resolution: '1920x1080', format: 'jpg' })
       })
-      if (!cmdResponse.ok) throw new Error('Error al enviar comando al Raspberry Pi')
+      if (!cmdResponse.ok) throw new Error('Error al enviar comando')
 
       await new Promise(resolve => setTimeout(resolve, 5000))
       const photoResponse = await fetch(`${API_URL}/api/rpi/latest-photo/${deviceId}`)
-      if (!photoResponse.ok) throw new Error('No se pudo obtener la foto del Raspberry Pi')
+      if (!photoResponse.ok) throw new Error('No se pudo obtener la foto')
 
       const photoData = await photoResponse.json()
-      if (!photoData.success || !photoData.image) throw new Error('Foto vacía o inválida')
+      if (!photoData.success || !photoData.image) throw new Error('Foto vacía')
 
       const base64Data = photoData.image.split(',')[1] || photoData.image
       const byteCharacters = atob(base64Data)
@@ -4004,14 +3992,14 @@ const Pruebas = () => {
       setResult(null)
       setProcessedImage(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al capturar desde Raspberry Pi')
+      setError(err instanceof Error ? err.message : 'Error al capturar')
     } finally {
       setIsCapturingFromRaspi(false)
     }
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // INICIAR STREAMING (Cloudflare Tunnel)
+  // STREAMING (Cloudflare Tunnel)
   // ═══════════════════════════════════════════════════════════════════════════
   const startStreaming = async (deviceId: string) => {
     setIsStartingStream(true)
@@ -4184,53 +4172,6 @@ const Pruebas = () => {
     closeCamera()
     setStreamUrl(null)
     setIsStreamActive(false)
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // UTILIDADES (SOLO LAS USADAS)
-  // ═══════════════════════════════════════════════════════════════════════════
-  const getSeveridadColor = (severidad: string) => {
-    switch (severidad.toLowerCase()) {
-      case 'alta': case 'media-alta': return 'text-red-400'
-      case 'media': return 'text-yellow-400'
-      case 'baja': return 'text-green-400'
-      case 'sin grietas': return 'text-slate-400'
-      default: return 'text-slate-400'
-    }
-  }
-
-  const getSeveridadBg = (severidad: string) => {
-    switch (severidad.toLowerCase()) {
-      case 'alta': case 'media-alta': return 'bg-red-500/10 border-red-500/30'
-      case 'media': return 'bg-yellow-500/10 border-yellow-500/30'
-      case 'baja': return 'bg-green-500/10 border-green-500/30'
-      case 'sin grietas': return 'bg-slate-500/10 border-slate-500/30'
-      default: return 'bg-slate-500/10 border-slate-500/30'
-    }
-  }
-
-  const getSeveridadIcon = (severidad: string) => {
-    switch (severidad.toLowerCase()) {
-      case 'alta': case 'media-alta': return 'Red'
-      case 'media': return 'Yellow'
-      case 'baja': return 'Green'
-      case 'sin grietas': return 'Check'
-      default: return 'Gray'
-    }
-  }
-
-  const getPatronIcon = (patron: string) => {
-    switch (patron) {
-      case 'horizontal': return 'Left-Right'
-      case 'vertical': return 'Up-Down'
-      case 'diagonal_escalera': return 'Diagonal Right'
-      case 'ramificada_mapa': return 'Map'
-      case 'mixto': return 'Shuffle'
-      case 'irregular': return 'Swirl'
-      case 'superficial': return 'Ruler'
-      case 'sin_grietas': return 'Check'
-      default: return 'Question'
-    }
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

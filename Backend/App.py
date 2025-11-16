@@ -3323,7 +3323,7 @@ if __name__ == '__main__':
 
 
 
-
+'''
 
 
 #jAngel1
@@ -4299,23 +4299,33 @@ def rpi_stream_url():
 
 @app.route('/api/stream/<device_id>', methods=['GET'])
 def stream_proxy(device_id):
-    """Proxy HTML del MediaMTX"""
+    """Proxy del stream usando URL PÚBLICA del túnel"""
     if device_id not in connected_devices:
         return jsonify({'error': 'Dispositivo no conectado'}), 404
 
     device_info = connected_devices[device_id]
-    ip_local = device_info['ip_local']
-    stream_port = device_info.get('stream_port', 8889)
-    stream_url = f"http://{ip_local}:{stream_port}/cam"
+    stream_url_public = device_info.get('stream_url_public')
 
-    print(f"📹 Proxy stream: {device_id} → {stream_url}")
+    if not stream_url_public:
+        return jsonify({
+            'error': 'Stream no disponible',
+            'hint': 'El RPi aún no envió la URL del túnel',
+            'device_id': device_id
+        }), 503
+
+    print(f"Proxy stream: {device_id} → {stream_url_public}")
 
     try:
-        resp = requests.get(stream_url, timeout=10)
+        # Proxy directo a la URL pública
+        resp = requests.get(stream_url_public, timeout=15, stream=True)
+        resp.raise_for_status()
+
+        # Reemplazar URLs internas por proxy relativo
         html_content = resp.text
+        base_url = stream_url_public.rsplit('/', 1)[0]  # e.g. https://abc.trycloudflare.com
 
         html_content = html_content.replace(
-            f"http://{ip_local}:{stream_port}",
+            base_url,
             f"/api/stream-proxy/{device_id}"
         )
 
@@ -4327,33 +4337,45 @@ def stream_proxy(device_id):
                 'Access-Control-Allow-Origin': '*'
             }
         )
+
+    except requests.exceptions.RequestException as e:
+        error_msg = str(e)
+        print(f"Error proxy stream: {error_msg}")
+        return jsonify({
+            'error': 'Stream no responde',
+            'url': stream_url_public,
+            'detail': error_msg
+        }), 502
     except Exception as e:
-        print(f"❌ Error proxy: {e}")
-        return jsonify({'error': str(e), 'url': stream_url}), 500
+        print(f"Error inesperado: {e}")
+        return jsonify({'error': str(e)}), 500
+    
+
+    
 
 @app.route('/api/stream-proxy/<device_id>/<path:subpath>', methods=['GET', 'POST', 'OPTIONS'])
 def stream_proxy_assets(device_id, subpath):
-    """Proxy assets WebRTC"""
     if request.method == 'OPTIONS':
         return jsonify({'status': 'ok'}), 200
 
     if device_id not in connected_devices:
         return jsonify({'error': 'No conectado'}), 404
 
-    device_info = connected_devices[device_id]
-    ip_local = device_info['ip_local']
-    stream_port = device_info.get('stream_port', 8889)
-    target_url = f"http://{ip_local}:{stream_port}/{subpath}"
+    stream_url_public = connected_devices[device_id].get('stream_url_public')
+    if not stream_url_public:
+        return jsonify({'error': 'URL pública no disponible'}), 503
+
+    target_url = f"{stream_url_public.rsplit('/', 1)[0]}/{subpath}"
 
     try:
         if request.method == 'GET':
-            resp = requests.get(target_url, timeout=10)
+            resp = requests.get(target_url, timeout=15)
         elif request.method == 'POST':
             resp = requests.post(
                 target_url,
                 data=request.get_data(),
                 headers={'Content-Type': request.content_type},
-                timeout=10
+                timeout=15
             )
 
         return Response(
@@ -4361,15 +4383,12 @@ def stream_proxy_assets(device_id, subpath):
             status=resp.status_code,
             content_type=resp.headers.get('Content-Type'),
             headers={
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type'
+                'Access-Control-Allow-Origin': '*'
             }
         )
     except Exception as e:
-        print(f"❌ Error proxy assets: {e}")
+        print(f"Error proxy asset: {e}")
         return jsonify({'error': str(e)}), 500
-
 # ═══════════════════════════════════════════════════════════════════════════
 # ✅ API REST - DETECCIÓN IA
 # ═══════════════════════════════════════════════════════════════════════════
@@ -4463,4 +4482,4 @@ else:
 print("✅ Backend en 0.0.0.0:5000\n")
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
+    app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)'''

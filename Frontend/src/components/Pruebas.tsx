@@ -5212,6 +5212,18 @@ const Pruebas = () => {
     return () => clearInterval(interval)
   }, [])
 
+  // 🧹 CLEANUP: Liberar URLs de objetos al desmontar
+  useEffect(() => {
+    return () => {
+      if (selectedImage && selectedImage.startsWith('blob:')) {
+        URL.revokeObjectURL(selectedImage)
+      }
+      if (processedImage && processedImage.startsWith('blob:')) {
+        URL.revokeObjectURL(processedImage)
+      }
+    }
+  }, [selectedImage, processedImage])
+
   const loadRaspberryDevices = async () => {
     setIsLoadingDevices(true)
     try {
@@ -5274,7 +5286,7 @@ const Pruebas = () => {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // 🆕 CAPTURAR FOTO - OPTIMIZADO PARA BACKEND 4.3
+  // 🆕 CAPTURAR FOTO - OPTIMIZADO + CACHE-BUSTING
   // ═══════════════════════════════════════════════════════════════════════════
 
   const captureAndAnalyzeFromRaspberry = async (deviceId: string) => {
@@ -5301,19 +5313,32 @@ const Pruebas = () => {
       // 2. Esperar a que RPi procese y envíe la foto
       await new Promise(resolve => setTimeout(resolve, 5000))
 
-      // 3. 🆕 Obtener foto directamente del endpoint optimizado
-      const photoUrl = `${API_URL}/api/rpi/latest-photo/${deviceId}`
+      // 3. 🆕 CACHE-BUSTING: Agregar timestamp para forzar recarga
+      const timestamp = Date.now()
+      const photoUrl = `${API_URL}/api/rpi/latest-photo/${deviceId}?t=${timestamp}`
       console.log('📥 Descargando foto desde:', photoUrl)
 
-      const photoResponse = await fetch(photoUrl)
+      const photoResponse = await fetch(photoUrl, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      })
 
       if (!photoResponse.ok) {
         throw new Error('No se pudo obtener la foto del Raspberry Pi')
       }
 
-      // 4. 🆕 Convertir blob de imagen a File
+      // 4. Convertir blob de imagen a File
       const blob = await photoResponse.blob()
-      const file = new File([blob], `raspberry_${deviceId}_${Date.now()}.jpg`, { type: 'image/jpeg' })
+      const file = new File([blob], `raspberry_${deviceId}_${timestamp}.jpg`, { type: 'image/jpeg' })
+
+      // 5. ✅ Revocar URL anterior para liberar memoria
+      if (selectedImage && selectedImage.startsWith('blob:')) {
+        URL.revokeObjectURL(selectedImage)
+      }
 
       setSelectedFile(file)
       setSelectedImage(URL.createObjectURL(blob))
@@ -5330,13 +5355,22 @@ const Pruebas = () => {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // 🆕 VER ÚLTIMA FOTO SIN CAPTURAR - NUEVO FEATURE
+  // 🆕 VER ÚLTIMA FOTO - CON CACHE-BUSTING
   // ═══════════════════════════════════════════════════════════════════════════
 
   const viewLastPhoto = async (deviceId: string) => {
     try {
-      const photoUrl = `${API_URL}/api/rpi/latest-photo/${deviceId}`
-      const response = await fetch(photoUrl)
+      const timestamp = Date.now()
+      const photoUrl = `${API_URL}/api/rpi/latest-photo/${deviceId}?t=${timestamp}`
+      
+      const response = await fetch(photoUrl, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      })
 
       if (!response.ok) {
         setError('No hay foto guardada para este dispositivo')
@@ -5344,7 +5378,11 @@ const Pruebas = () => {
       }
 
       const blob = await response.blob()
-      const file = new File([blob], `raspberry_${deviceId}_latest.jpg`, { type: 'image/jpeg' })
+      const file = new File([blob], `raspberry_${deviceId}_${timestamp}.jpg`, { type: 'image/jpeg' })
+
+      if (selectedImage && selectedImage.startsWith('blob:')) {
+        URL.revokeObjectURL(selectedImage)
+      }
 
       setSelectedFile(file)
       setSelectedImage(URL.createObjectURL(blob))
@@ -5352,7 +5390,7 @@ const Pruebas = () => {
       setProcessedImage(null)
       setSelectedDevice(deviceId)
 
-      console.log('✅ Última foto cargada')
+      console.log('✅ Última foto cargada con timestamp:', timestamp)
     } catch (err) {
       setError('Error al cargar la última foto')
       console.error('❌ Error:', err)
@@ -5466,6 +5504,9 @@ const Pruebas = () => {
 
       const reader = new FileReader()
       reader.onloadend = () => {
+        if (selectedImage && selectedImage.startsWith('blob:')) {
+          URL.revokeObjectURL(selectedImage)
+        }
         setSelectedImage(reader.result as string)
         setResult(null)
         setProcessedImage(null)
@@ -5511,6 +5552,9 @@ const Pruebas = () => {
       if (blob) {
         const file = new File([blob], `camera_capture_${Date.now()}.jpg`, { type: 'image/jpeg' })
         setSelectedFile(file)
+        if (selectedImage && selectedImage.startsWith('blob:')) {
+          URL.revokeObjectURL(selectedImage)
+        }
         setSelectedImage(URL.createObjectURL(blob))
         setResult(null)
         setProcessedImage(null)
@@ -5574,6 +5618,12 @@ const Pruebas = () => {
   }
 
   const resetTest = () => {
+    if (selectedImage && selectedImage.startsWith('blob:')) {
+      URL.revokeObjectURL(selectedImage)
+    }
+    if (processedImage && processedImage.startsWith('blob:')) {
+      URL.revokeObjectURL(processedImage)
+    }
     setSelectedImage(null)
     setSelectedFile(null)
     setResult(null)
@@ -5678,7 +5728,7 @@ const Pruebas = () => {
           <div className="text-center mb-16">
             <div className="inline-flex items-center gap-2 bg-cyan-500/10 border border-cyan-500/30 rounded-full px-5 py-2 mb-6">
               <Camera className="w-4 h-4 text-cyan-400" />
-              <span className="text-cyan-400 text-sm font-semibold tracking-wide">PRUEBAS v5.1 + BACKEND 4.3 OPTIMIZADO</span>
+              <span className="text-cyan-400 text-sm font-semibold tracking-wide">PRUEBAS v5.1 + BACKEND 4.3 + CACHE-BUSTING</span>
             </div>
 
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-white mb-6">
@@ -5739,7 +5789,7 @@ const Pruebas = () => {
                       <Wifi className="w-6 h-6 text-purple-400" />
                       Dispositivos Raspberry Pi + Cloudflare Tunnel
                       <span className="text-xs bg-green-500/20 text-green-400 px-3 py-1 rounded-full border border-green-500/30">
-                        Backend 4.3 Optimizado
+                        Backend 4.3 + Cache-Busting
                       </span>
                     </h3>
                     <button
@@ -5977,6 +6027,7 @@ const Pruebas = () => {
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* COLUMNA IZQUIERDA: CAPTURA */}
             <div className="relative group">
               <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-blue-600/10 rounded-3xl blur-2xl opacity-0 group-hover:opacity-100 transition duration-500"></div>
               <div className="relative bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 rounded-3xl p-6 md:p-8 hover:border-cyan-500/50 transition-all duration-300">
@@ -6073,7 +6124,7 @@ const Pruebas = () => {
                         </li>
                         <li className="flex items-start gap-2">
                           <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full mt-2 flex-shrink-0"></div>
-                          <span>🆕 Backend 4.3: fotos guardadas en disco, memoria optimizada</span>
+                          <span>🆕 Backend 4.3: fotos guardadas en disco con cache-busting</span>
                         </li>
                         <li className="flex items-start gap-2">
                           <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full mt-2 flex-shrink-0"></div>
@@ -6165,6 +6216,7 @@ const Pruebas = () => {
               </div>
             </div>
 
+            {/* COLUMNA DERECHA: RESULTADOS */}
             <div className="space-y-6">
               <div className="relative bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 rounded-3xl p-6 md:p-8">
                 <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
@@ -6215,20 +6267,21 @@ const Pruebas = () => {
                         </li>
                         <li className="flex items-start gap-2">
                           <CheckCircle className="w-5 h-5 text-purple-400 flex-shrink-0 mt-0.5" />
-                          <span><strong>🆕 Fotos optimizadas</strong> - guardadas en disco, no en RAM</span>
+                          <span><strong>🆕 Cache-busting</strong> - siempre muestra foto más reciente</span>
                         </li>
                       </ul>
                     </div>
 
                     <div className="bg-green-500/10 border border-green-500/30 rounded-2xl p-6">
-                      <h4 className="font-bold text-green-400 mb-3 text-lg">🆕 Backend 4.3 - Optimizaciones</h4>
+                      <h4 className="font-bold text-green-400 mb-3 text-lg">🆕 Backend 4.3 + Cache-Busting</h4>
                       <ul className="space-y-2 text-slate-300 text-sm">
                         <li>• Fotos guardadas en <code className="bg-slate-800 px-2 py-1 rounded text-cyan-400">/app/uploads</code></li>
+                        <li>• ✅ Cache-busting con timestamp en URL</li>
+                        <li>• ✅ Headers no-cache para navegador</li>
+                        <li>• ✅ Limpieza automática de Blob URLs</li>
                         <li>• Metadata ligera en RAM (JSON)</li>
                         <li>• Limpieza automática cada 1 hora</li>
-                        <li>• Máx 5 fotos por dispositivo</li>
-                        <li>• Retención: 24 horas</li>
-                        <li>• Endpoint directo: <code className="bg-slate-800 px-2 py-1 rounded text-cyan-400">/api/rpi/latest-photo/{'{id}'}</code></li>
+                        <li>• Máx 5 fotos por dispositivo • Retención: 24h</li>
                       </ul>
                     </div>
 
@@ -6272,7 +6325,7 @@ const Pruebas = () => {
                         </div>
                         <div>
                           <p className="text-xs text-slate-500 mb-1">Área Afectada</p>
-                          <p className="text-2xl font-bold text-orange-400">{result.metricas.porcentaje_grietas.toFixed(2)}%</p>
+                                                    <p className="text-2xl font-bold text-orange-400">{result.metricas.porcentaje_grietas.toFixed(2)}%</p>
                         </div>
                         {result.metricas.longitud_total_px && (
                           <div>
@@ -6303,7 +6356,7 @@ const Pruebas = () => {
                             <p className="text-sm text-slate-300 mt-2">{result.metricas.analisis_morfologico.descripcion_patron}</p>
                           </div>
 
-                                                    <div className="bg-slate-900/50 border border-orange-500/20 rounded-xl p-4">
+                          <div className="bg-slate-900/50 border border-orange-500/20 rounded-xl p-4">
                             <p className="text-sm text-orange-400 font-semibold mb-2">⚠️ Causa Probable</p>
                             <p className="text-sm text-slate-300">{result.metricas.analisis_morfologico.causa_probable}</p>
                           </div>

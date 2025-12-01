@@ -1621,7 +1621,7 @@ const Pruebas = () => {
   // ═══════════════════════════════════════════════════════════════════════════
   // 🚀 CAPTURAR FOTO - OPTIMIZADO CON CACHE-BUSTING
   // ═══════════════════════════════════════════════════════════════════════════
-
+/*
   const captureAndAnalyzeFromRaspberry = async (deviceId: string) => {
     setIsCapturingFromRaspi(true)
     setError(null)
@@ -1685,7 +1685,106 @@ const Pruebas = () => {
     } finally {
       setIsCapturingFromRaspi(false)
     }
+  }*/
+
+    const captureAndAnalyzeFromRaspberry = async (deviceId: string) => {
+  setIsCapturingFromRaspi(true)
+  setError(null)
+  setSelectedDevice(deviceId)
+
+  try {
+    console. log(`📸 Solicitando captura a ${deviceId}...`)
+
+    // 1. Enviar comando de captura
+    const cmdResponse = await fetch(`${API_URL}/api/rpi/capture/${deviceId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ resolution: '1920x1080', format: 'jpg' })
+    })
+
+    if (!cmdResponse.ok) {
+      throw new Error('Error al enviar comando al Raspberry Pi')
+    }
+
+    console.log('✅ Comando enviado, esperando foto...')
+    
+    // 2. ✅ ESPERAR MÁS TIEMPO (multipart puede tardar en procesar)
+    await new Promise(resolve => setTimeout(resolve, 5000)) // 5s en vez de 3s
+
+    // 3. ✅ INTENTAR CARGAR VARIAS VECES (por si tarda en guardarse)
+    let photoBlob: Blob | null = null
+    let attempts = 0
+    const maxAttempts = 5
+
+    while (! photoBlob && attempts < maxAttempts) {
+      attempts++
+      const timestamp = Date.now()
+      const photoUrl = `${API_URL}/api/rpi/latest-photo/${deviceId}?t=${timestamp}`
+      
+      console.log(`📥 Intento ${attempts}/${maxAttempts}: ${photoUrl}`)
+
+      try {
+        const photoResponse = await fetch(photoUrl, {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
+        })
+
+        if (photoResponse.ok) {
+          photoBlob = await photoResponse.blob()
+          console.log(`✅ Foto descargada (${photoBlob.size} bytes)`)
+          break
+        } else {
+          console.warn(`⚠️ Intento ${attempts} falló: ${photoResponse.status}`)
+          await new Promise(resolve => setTimeout(resolve, 1000))
+        }
+      } catch (err) {
+        console.warn(`⚠️ Error en intento ${attempts}:`, err)
+        await new Promise(resolve => setTimeout(resolve, 1000))
+      }
+    }
+
+    if (!photoBlob) {
+      throw new Error('No se pudo obtener la foto después de varios intentos')
+    }
+
+    // 4. ✅ LIMPIAR IMAGEN ANTERIOR ANTES DE CARGAR NUEVA
+    if (selectedImage) {
+      if (selectedImage.startsWith('blob:')) {
+        URL.revokeObjectURL(selectedImage)
+      }
+      setSelectedImage(null)
+      setSelectedFile(null)
+    }
+
+    // 5. ✅ CREAR NUEVO FILE Y OBJECT URL
+    const timestamp = Date.now()
+    const file = new File([photoBlob], `raspberry_${deviceId}_${timestamp}.jpg`, { 
+      type: 'image/jpeg',
+      lastModified: timestamp
+    })
+
+    const newBlobUrl = URL.createObjectURL(photoBlob)
+
+    setSelectedFile(file)
+    setSelectedImage(newBlobUrl)
+    setResult(null)
+    setProcessedImage(null)
+
+    console.log('✅ Foto lista para análisis (multipart)')
+    console.log(`   File size: ${file.size} bytes`)
+    console.log(`   Blob URL: ${newBlobUrl}`)
+
+  } catch (err) {
+    setError(err instanceof Error ? err.message : 'Error al capturar desde Raspberry Pi')
+    console.error('❌ Error:', err)
+  } finally {
+    setIsCapturingFromRaspi(false)
   }
+}
 
   // ═══════════════════════════════════════════════════════════════════════════
   // 🆕 VER ÚLTIMA FOTO - CON CACHE-BUSTING
@@ -1733,7 +1832,7 @@ const Pruebas = () => {
   // ═══════════════════════════════════════════════════════════════════════════
   // STREAMING
   // ═══════════════════════════════════════════════════════════════════════════
-
+/*
   const startStreaming = async (deviceId: string) => {
     setIsStartingStream(true)
     setError(null)
@@ -1786,7 +1885,78 @@ const Pruebas = () => {
       setIsStartingStream(false)
     }
   }
+*/
 
+const startStreaming = async (deviceId: string) => {
+  setIsStartingStream(true)
+  setError(null)
+  setSelectedDevice(deviceId)
+
+  try {
+    console.log(`🎬 Iniciando streaming en ${deviceId}... `)
+
+    const response = await fetch(`${API_URL}/api/rpi/streaming/start/${deviceId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    })
+
+    if (!response.ok) {
+      throw new Error('Error al iniciar streaming')
+    }
+
+    console.log('✅ Comando de inicio enviado')
+    
+    // ✅ ESPERAR MÁS TIEMPO PARA QUE MEDIAMTX INICIE
+    await new Promise(resolve => setTimeout(resolve, 12000)) // 12s en vez de 10s
+    
+    // ✅ RECARGAR DISPOSITIVOS VARIAS VECES
+    for (let i = 0; i < 3; i++) {
+      await loadRaspberryDevices()
+      await new Promise(resolve => setTimeout(resolve, 2000))
+    }
+
+    const updatedDevice = raspberryDevices. find(d => d.device_id === deviceId)
+
+    if (! updatedDevice) {
+      throw new Error('Dispositivo no encontrado después de actualizar')
+    }
+
+    let finalStreamUrl: string
+
+    // ✅ CONSTRUIR URL CORRECTA
+    if (updatedDevice.stream_url_public) {
+      // Si hay URL pública de FRP, usarla directamente
+      finalStreamUrl = updatedDevice.stream_url_public
+      console.log('✅ Usando FRP Tunnel:', finalStreamUrl)
+    } else if (updatedDevice.stream_url_local) {
+      // Si solo hay URL local, usarla
+      finalStreamUrl = updatedDevice.stream_url_local
+      console.log('⚠️ Usando URL local:', finalStreamUrl)
+    } else {
+      // ✅ FALLBACK: Construir URL manualmente
+      const localIp = updatedDevice.ip_local
+      const port = updatedDevice.stream_port || 8889
+      finalStreamUrl = `http://${localIp}:${port}/cam`
+      console.log('⚠️ Construyendo URL manual:', finalStreamUrl)
+    }
+
+    // ✅ VERIFICAR QUE LA URL NO ESTÉ VACÍA
+    if (!finalStreamUrl || finalStreamUrl.includes('undefined')) {
+      throw new Error('URL de streaming inválida')
+    }
+
+    setStreamUrl(finalStreamUrl)
+    setIsStreamActive(true)
+
+    console.log('✅ Streaming activo:', finalStreamUrl)
+
+  } catch (err) {
+    console. error('❌ Error al iniciar streaming:', err)
+    setError(`No se pudo iniciar el streaming: ${err instanceof Error ? err.message : 'Error desconocido'}`)
+  } finally {
+    setIsStartingStream(false)
+  }
+}
   const stopStreaming = async (deviceId: string) => {
     setIsStoppingStream(true)
     setError(null)
@@ -2272,36 +2442,64 @@ const Pruebas = () => {
                           </div>
 
                           {/* IFRAME STREAMING */}
-                          {isStreamActive && streamUrl && selectedDevice === device.device_id && (
-                            <div className="mt-4 bg-black rounded-xl overflow-hidden border border-purple-500/50">
-                              <iframe
-                                src={streamUrl}
-                                className="w-full aspect-video"
-                                allow="camera; microphone"
-                                title={`Stream ${device.device_id}`}
-                                onLoad={() => console.log('✅ Iframe cargado:', streamUrl)}
-                                onError={(e) => {
-                                  console.error('❌ Error al cargar streaming iframe:', e)
-                                  setError('No se pudo conectar al streaming.  Reintentando...')
-                                  setTimeout(() => {
-                                    loadRaspberryDevices()
-                                  }, 3000)
-                                }}
-                              />
-                              <div className="bg-slate-900 p-3 text-center">
-                                <p className="text-sm text-purple-400 font-semibold flex items-center justify-center gap-2">
-                                  <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                                  STREAMING EN VIVO • WebRTC • MediaMTX
-                                  {device.stream_url_public && (
-                                    <span className="text-cyan-400 ml-2 flex items-center gap-1">
-                                      <Globe className="w-3 h-3" />
-                                      FRP Tunnel
-                                    </span>
-                                  )}
-                                </p>
-                              </div>
-                            </div>
-                          )}
+                          {isStreamActive && streamUrl && selectedDevice === device. device_id && (
+  <div className="mt-4 bg-black rounded-xl overflow-hidden border border-purple-500/50">
+    {/* ✅ VERIFICAR SI ES IFRAME O VIDEO DIRECTO */}
+    {streamUrl. includes('/cam') ?  (
+      // Video WebRTC directo (MediaMTX)
+      <div className="relative w-full aspect-video bg-black flex items-center justify-center">
+        <iframe
+          key={streamUrl} // ✅ Force re-render cuando cambia URL
+          src={streamUrl}
+          className="w-full h-full absolute inset-0"
+          allow="camera; microphone; autoplay"
+          title={`Stream ${device.device_id}`}
+          sandbox="allow-scripts allow-same-origin allow-presentation"
+          onLoad={() => {
+            console. log('✅ Iframe cargado:', streamUrl)
+          }}
+          onError={(e) => {
+            console.error('❌ Error al cargar streaming iframe:', e)
+            setError('No se pudo conectar al streaming.  Verifica la URL.')
+          }}
+        />
+        
+        {/* Indicador de carga */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <Loader className="w-12 h-12 text-purple-400 animate-spin" />
+        </div>
+      </div>
+    ) : (
+      // URL externa (FRP/proxy)
+      <iframe
+        key={streamUrl}
+        src={streamUrl}
+        className="w-full aspect-video"
+        allow="camera; microphone; autoplay"
+        title={`Stream ${device.device_id}`}
+        sandbox="allow-scripts allow-same-origin allow-presentation"
+      />
+    )}
+    
+    <div className="bg-slate-900 p-3 text-center">
+      <p className="text-sm text-purple-400 font-semibold flex items-center justify-center gap-2">
+        <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+        STREAMING EN VIVO • WebRTC • MediaMTX
+        {device.stream_url_public && (
+          <span className="text-cyan-400 ml-2 flex items-center gap-1">
+            <Globe className="w-3 h-3" />
+            FRP Tunnel
+          </span>
+        )}
+      </p>
+      
+      {/* ✅ MOSTRAR URL PARA DEBUG */}
+      <p className="text-xs text-slate-500 mt-1 font-mono truncate">
+        {streamUrl}
+      </p>
+    </div>
+  </div>
+)}
                         </div>
                       ))}
                     </div>

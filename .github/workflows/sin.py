@@ -135,13 +135,27 @@ def cleanup_old_photos():
             now = datetime.now()
             retention_time = timedelta(hours=config.PHOTO_RETENTION_HOURS)
             
+            # 🆕 Incluir archivos overlay e input
             all_photos = glob.glob(os.path.join(config.UPLOAD_FOLDER, '*.jpg'))
             all_photos.extend(glob.glob(os.path.join(config.UPLOAD_FOLDER, '*.jpeg')))
-            all_photos.extend(glob.glob(os.path.join(config.UPLOAD_FOLDER, '*.png')))
+            all_photos.extend(glob.glob(os. path.join(config.UPLOAD_FOLDER, '*.png')))
             
             device_photos = {}
+            temp_files = []  # Archivos overlay/input temporales
+            
             for photo in all_photos:
                 basename = os.path.basename(photo)
+                
+                # 🆕 Identificar archivos temporales
+                if basename.startswith('overlay_') or basename.startswith('input_'):
+                    file_time = datetime.fromtimestamp(os.path.getmtime(photo))
+                    temp_files.append({
+                        'path': photo,
+                        'time': file_time
+                    })
+                    continue
+                
+                # Archivos de dispositivos
                 parts = basename.split('_')
                 if len(parts) >= 2:
                     device_id = parts[0]
@@ -159,6 +173,7 @@ def cleanup_old_photos():
             
             deleted_count = 0
             
+            # Limpiar fotos de dispositivos
             for device_id, photos in device_photos.items():
                 photos.sort(key=lambda x: x['time'], reverse=True)
                 
@@ -170,21 +185,28 @@ def cleanup_old_photos():
                             os.remove(photo_info['path'])
                             deleted_count += 1
                             
-                            # Limpiar metadata
                             if device_id in latest_photos_metadata:
                                 if latest_photos_metadata[device_id]. get('filepath') == photo_info['path']:
                                     del latest_photos_metadata[device_id]
                         except Exception as e:
-                            print(f"⚠️  Error borrando {photo_info['path']}: {e}")
+                            print(f"⚠️ Error borrando {photo_info['path']}: {e}")
+            
+            # 🆕 Limpiar archivos temporales (overlay/input) más antiguos de 1 hora
+            temp_retention = timedelta(hours=1)
+            for temp_file in temp_files:
+                file_age = now - temp_file['time']
+                if file_age > temp_retention:
+                    try:
+                        os.remove(temp_file['path'])
+                        deleted_count += 1
+                    except Exception as e:
+                        print(f"⚠️ Error borrando temp {temp_file['path']}: {e}")
             
             if deleted_count > 0:
-                print(f"🧹 Limpieza: {deleted_count} fotos antiguas eliminadas")
+                print(f"🧹 Limpieza: {deleted_count} archivos eliminados")
                 
         except Exception as e:
             print(f"❌ Error en cleanup_old_photos: {e}")
-
-cleanup_photos_thread = threading.Thread(target=cleanup_old_photos, daemon=True)
-cleanup_photos_thread.start()
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 🧹 LIMPIEZA DE DISPOSITIVOS OFFLINE
@@ -371,7 +393,7 @@ def rpi_heartbeat():
         print(f"❌ Error heartbeat: {e}")
         return jsonify({'error': str(e)}), 500
 
-@app. route('/api/rpi/photo', methods=['POST', 'OPTIONS'])
+@app.route('/api/rpi/photo', methods=['POST', 'OPTIONS'])
 def rpi_upload_photo():
     """🚀 Recibir foto con multipart/form-data (3× MÁS RÁPIDO)"""
     if request.method == 'OPTIONS':
@@ -393,11 +415,19 @@ def rpi_upload_photo():
 
         file = request.files['image']
         
-        if file.filename == '':
+        if not file or file.filename == '':
             return jsonify({'error': 'Nombre de archivo vacío'}), 400
 
-        if not allowed_file(file.filename):
-            return jsonify({'error': 'Formato no permitido'}), 400
+        # ✅ VALIDACIÓN MEJORADA DE EXTENSIÓN
+        if '.' in file.filename:
+            original_ext = file.filename.rsplit('.',1)[1].lower()
+        else:
+            # Si no hay extensión, usar jpg por defecto
+            original_ext = 'jpg'
+        
+        # Validar extensión
+        if original_ext not in config.ALLOWED_EXTENSIONS:
+            return jsonify({'error': f'Formato no permitido: {original_ext}'}), 400
 
         # Actualizar last_seen
         with device_lock:
@@ -405,7 +435,6 @@ def rpi_upload_photo():
 
         # Generar nombre seguro
         timestamp_str = datetime.now().strftime('%Y%m%d_%H%M%S')
-        original_ext = file.filename.rsplit('. ', 1)[1].lower()
         filename = f"{device_id}_{timestamp_str}.{original_ext}"
         filepath = os.path.join(config.UPLOAD_FOLDER, filename)
 
@@ -418,7 +447,7 @@ def rpi_upload_photo():
         metadata = {}
         if 'resolution' in request.form:
             metadata['resolution'] = request.form.get('resolution')
-        if 'color_profile' in request.form:
+        if 'color_profile' in request. form:
             metadata['color_profile'] = request.form.get('color_profile')
 
         # Guardar solo metadata en RAM
@@ -448,6 +477,8 @@ def rpi_upload_photo():
         print(f"❌ Error upload_photo: {e}")
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
+    
+
 
 @app.route('/api/rpi/latest-photo/<device_id>', methods=['GET', 'OPTIONS'])
 def get_latest_photo(device_id):
@@ -730,7 +761,7 @@ def health():
 
 @app.route('/api/predict', methods=['POST', 'OPTIONS'])
 def predict():
-    """Análisis IA de grietas"""
+    """Análisis IA de grietas - 100% MULTIPART"""
     if request.method == 'OPTIONS':
         return jsonify({'status': 'ok'}), 200
 
@@ -738,34 +769,51 @@ def predict():
         if not model_loaded:
             return jsonify({'error': 'Modelo no cargado'}), 503
 
-        if 'image' not in request. files:
+        if 'image' not in request.files:
             return jsonify({'error': 'No imagen'}), 400
 
         file = request.files['image']
         if file.filename == '':
             return jsonify({'error': 'Nombre vacío'}), 400
 
-        use_tta = request.form.get('use_tta', 'true').lower() == 'true'
+        use_tta = request.form. get('use_tta', 'true').lower() == 'true'
 
         filename = secure_filename(file.filename)
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f"{timestamp}_{filename}"
-        filepath = os.path.join(config. UPLOAD_FOLDER, filename)
+        filename = f"input_{timestamp}_{filename}"
+        filepath = os.path.join(config.UPLOAD_FOLDER, filename)
         file.save(filepath)
 
         print(f"📥 Procesando IA: {filename}")
 
+        # Procesar imagen
         img_original, pred_mask, confidence_map, original_dims = procesar_imagen(filepath, use_tta)
         overlay = crear_overlay(img_original, pred_mask)
         metricas = calcular_metricas(pred_mask, confidence_map)
 
+        # 🚀 GUARDAR OVERLAY EN DISCO (no base64)
+        overlay_filename, overlay_filepath = guardar_imagen_temp(overlay, prefix='overlay')
+
         response_data = {
             'success': True,
             'metricas': metricas,
-            'imagen_overlay': imagen_a_base64(overlay),
-            'timestamp': datetime.now().isoformat()
+            'imagen_overlay_url': f'/api/result-image/{overlay_filename}',  # ✅ URL
+            'timestamp': datetime.now().isoformat(),
+            'procesamiento': {
+                'architecture': config.ARCHITECTURE,
+                'encoder': config.ENCODER,
+                'tta_usado': use_tta,
+                'tta_transforms': len(config.TTA_TRANSFORMS) if use_tta else 1,
+                'threshold': config.THRESHOLD,
+                'target_size': config.TARGET_SIZE,
+                'original_dimensions': {
+                    'width': original_dims[0],
+                    'height': original_dims[1]
+                }
+            }
         }
 
+        # Borrar imagen de entrada (la de salida se borra después)
         os.remove(filepath)
 
         return jsonify(response_data), 200
@@ -774,6 +822,58 @@ def predict():
         print(f"❌ Error predict: {e}")
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
+    
+
+
+@app.route('/api/result-image/<filename>', methods=['GET', 'OPTIONS'])
+def get_result_image(filename):
+    """Servir imagen procesada (overlay) - MULTIPART"""
+    if request.method == 'OPTIONS':
+        return jsonify({'status': 'ok'}), 200
+
+    try:
+        # Validar nombre de archivo (seguridad)
+        if not filename.startswith('overlay_') or '. .' in filename:
+            return jsonify({'error': 'Nombre de archivo inválido'}), 400
+
+        filepath = os.path.join(config.UPLOAD_FOLDER, filename)
+
+        if not os.path.exists(filepath):
+            return jsonify({'error': 'Archivo no encontrado'}), 404
+
+        # Generar ETag
+        etag = calculate_etag(filepath)
+        
+        # Verificar ETag del cliente
+        client_etag = request.headers.get('If-None-Match')
+        if config.ENABLE_ETAG and client_etag and etag:
+            if client_etag == etag:
+                return Response(status=304)
+
+        # Devolver archivo
+        response = send_file(
+            filepath,
+            mimetype='image/jpeg',
+            as_attachment=False,
+            download_name=filename
+        )
+        
+        # Headers anti-caché
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        
+        if etag:
+            response.headers['ETag'] = etag
+        
+        # 🧹 BORRAR DESPUÉS DE 1 HORA (opcional)
+        # threading.Timer(3600, lambda: os.remove(filepath) if os.path.exists(filepath) else None).start()
+        
+        return response
+
+    except Exception as e:
+        print(f"❌ Error result_image: {e}")
+        return jsonify({'error': str(e)}), 500
 
 # ═══════════════════════════════════════════════════════════════════════════
 # FUNCIONES IA (sin cambios, mantenidas del original)
@@ -1178,15 +1278,17 @@ def calcular_metricas(mask, confidence_map):
         'analisis_morfologico': morfologia
     }
 
-def imagen_a_base64(img_rgb):
-    img_bgr = cv2.cvtColor(img_rgb, cv2. COLOR_RGB2BGR)
-
-    if config.USE_JPEG_OUTPUT:
-        _, buffer = cv2.imencode('.jpg', img_bgr, [cv2.IMWRITE_JPEG_QUALITY, config.JPEG_QUALITY])
-        return f"data:image/jpeg;base64,{base64.b64encode(buffer).decode('utf-8')}"
-    else:
-        _, buffer = cv2.imencode('. png', img_bgr, [cv2.IMWRITE_PNG_COMPRESSION, config.PNG_COMPRESSION])
-        return f"data:image/png;base64,{base64. b64encode(buffer).decode('utf-8')}"
+def guardar_imagen_temp(img_rgb, prefix='overlay'):
+    """Guardar imagen procesada temporalmente y devolver ruta"""
+    img_bgr = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGR)
+    
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_%f')
+    filename = f"{prefix}_{timestamp}.jpg"
+    filepath = os.path.join(config.UPLOAD_FOLDER, filename)
+    
+    cv2.imwrite(filepath, img_bgr, [cv2.IMWRITE_JPEG_QUALITY, config. JPEG_QUALITY])
+    
+    return filename, filepath
 
 # ═══════════════════════════════════════════════════════════════════════════
 # INICIALIZACIÓN

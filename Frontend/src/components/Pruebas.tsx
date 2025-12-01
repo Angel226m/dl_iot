@@ -1470,7 +1470,8 @@ interface Procesamiento {
 interface PredictResponse {
   success: boolean
   metricas: Metricas
-  imagen_overlay?: string
+  imagen_overlay_url?: string  // ✅ CAMBIO: URL en vez de base64
+
   timestamp: string
   procesamiento?: Procesamiento
   error?: string
@@ -1949,9 +1950,12 @@ const Pruebas = () => {
       }
 
       setResult(data)
-      if (data.imagen_overlay) {
-        setProcessedImage(data.imagen_overlay)
-      }
+      if (data. imagen_overlay_url) {
+  // Construir URL completa con cache-busting
+         const timestamp = Date.now()
+         const fullUrl = `${API_URL}${data.imagen_overlay_url}?t=${timestamp}`
+         setProcessedImage(fullUrl)
+         }
 
       console.log('✅ Análisis completado')
     } catch (err) {

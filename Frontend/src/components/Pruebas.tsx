@@ -1928,6 +1928,9 @@ const startStreaming = async (deviceId: string) => {
       // Si hay URL pública de FRP, usarla directamente
       finalStreamUrl = updatedDevice.stream_url_public
       console.log('✅ Usando FRP Tunnel:', finalStreamUrl)
+      // En la consola del navegador
+      console.log('Stream URL:', streamUrl)
+      console.log('Device:', raspberryDevices.find(d => d.device_id === 'rpi4-cam-angel'))
     } else if (updatedDevice.stream_url_local) {
       // Si solo hay URL local, usarla
       finalStreamUrl = updatedDevice.stream_url_local
@@ -2471,6 +2474,7 @@ const startStreaming = async (deviceId: string) => {
       </div>
     ) : (
       // URL externa (FRP/proxy)
+      
       <iframe
         key={streamUrl}
         src={streamUrl}

@@ -1406,6 +1406,23 @@ export default Pruebas */
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 /*
 
 import { useState, useRef, useEffect } from 'react'
@@ -1633,72 +1650,8 @@ const Pruebas = () => {
   // ═══════════════════════════════════════════════════════════════════════════
   // 🚀 CAPTURAR FOTO - OPTIMIZADO CON CACHE-BUSTING
   // ═══════════════════════════════════════════════════════════════════════════
-/*
-  const captureAndAnalyzeFromRaspberry = async (deviceId: string) => {
-    setIsCapturingFromRaspi(true)
-    setError(null)
-    setSelectedDevice(deviceId)
+ 
 
-    try {
-      console.log(`📸 Solicitando captura a ${deviceId}... `)
-
-      // 1. Enviar comando de captura
-      const cmdResponse = await fetch(`${API_URL}/api/rpi/capture/${deviceId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ resolution: '1920x1080', format: 'jpg' })
-      })
-
-      if (!cmdResponse.ok) {
-        throw new Error('Error al enviar comando al Raspberry Pi')
-      }
-
-      console.log('✅ Comando enviado, esperando foto...')
-      
-      // 2.  Esperar a que RPi procese y envíe la foto (multipart es más rápido)
-      await new Promise(resolve => setTimeout(resolve, 3000)) // 3s en vez de 5s
-
-      // 3. 🚀 CACHE-BUSTING: Agregar timestamp para forzar recarga
-      const timestamp = Date.now()
-      const photoUrl = `${API_URL}/api/rpi/latest-photo/${deviceId}?t=${timestamp}`
-      console.log('📥 Descargando foto desde:', photoUrl)
-
-      const photoResponse = await fetch(photoUrl, {
-        cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
-        }
-      })
-
-      if (!photoResponse.ok) {
-        throw new Error('No se pudo obtener la foto del Raspberry Pi')
-      }
-
-      // 4.  Convertir blob de imagen a File
-      const blob = await photoResponse.blob()
-      const file = new File([blob], `raspberry_${deviceId}_${timestamp}.jpg`, { type: 'image/jpeg' })
-
-      // 5. ✅ Revocar URL anterior para liberar memoria
-      if (selectedImage && selectedImage.startsWith('blob:')) {
-        URL.revokeObjectURL(selectedImage)
-      }
-
-      setSelectedFile(file)
-      setSelectedImage(URL.createObjectURL(blob))
-      setResult(null)
-      setProcessedImage(null)
-
-      console.log('✅ Foto lista para análisis (multipart)')
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al capturar desde Raspberry Pi')
-      console. error('❌ Error:', err)
-    } finally {
-      setIsCapturingFromRaspi(false)
-    }
-  }*/
-/*
     const captureAndAnalyzeFromRaspberry = async (deviceId: string) => {
   setIsCapturingFromRaspi(true)
   setError(null)
@@ -1721,7 +1674,6 @@ const Pruebas = () => {
     console.log('✅ Comando enviado, esperando foto...')
     
     // 2. ✅ ESPERAR MÁS TIEMPO (multipart puede tardar en procesar)
-    /*
     await new Promise(resolve => setTimeout(resolve, 5000)) // 5s en vez de 3s
 
     // 3. ✅ INTENTAR CARGAR VARIAS VECES (por si tarda en guardarse)
@@ -1842,64 +1794,8 @@ const Pruebas = () => {
     }
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // STREAMING
-  // ═══════════════════════════════════════════════════════════════════════════
-/*
-  const startStreaming = async (deviceId: string) => {
-    setIsStartingStream(true)
-    setError(null)
-    setSelectedDevice(deviceId)
+ 
 
-    try {
-      console.log(`🎬 Iniciando streaming en ${deviceId}...`)
-
-      const response = await fetch(`${API_URL}/api/rpi/streaming/start/${deviceId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      })
-
-      if (!response.ok) {
-        throw new Error('Error al iniciar streaming')
-      }
-
-      console.log('✅ Comando de inicio enviado')
-      await new Promise(resolve => setTimeout(resolve, 10000)) // Esperar 10s
-      await loadRaspberryDevices()
-
-      const updatedDevice = raspberryDevices.find(d => d.device_id === deviceId)
-
-      if (!updatedDevice) {
-        throw new Error('Dispositivo no encontrado después de actualizar')
-      }
-
-      let finalStreamUrl: string
-
-      // Prioridad: URL pública de FRP > URL local
-      if (updatedDevice.stream_url_public) {
-        finalStreamUrl = updatedDevice. stream_url_public
-        console.log('✅ Usando FRP Tunnel:', finalStreamUrl)
-      } else if (updatedDevice.stream_url_local) {
-        finalStreamUrl = updatedDevice.stream_url_local
-        console.log('⚠️ Usando URL local:', finalStreamUrl)
-      } else {
-        throw new Error('No hay URL de streaming disponible')
-      }
-
-      setStreamUrl(finalStreamUrl)
-      setIsStreamActive(true)
-
-      console.log('✅ Streaming activo:', finalStreamUrl)
-
-    } catch (err) {
-      console.error('❌ Error al iniciar streaming:', err)
-      setError('No se pudo iniciar el streaming')
-    } finally {
-      setIsStartingStream(false)
-    }
-  }
-*/
-/*
 const startStreaming = async (deviceId: string) => {
   setIsStartingStream(true)
   setError(null)
@@ -3034,9 +2930,12 @@ const startStreaming = async (deviceId: string) => {
 export default Pruebas
 
              */
+            
 
 
- import { useState, useRef, useEffect } from 'react'
+
+
+import { useState, useRef, useEffect } from 'react'
 import { Camera, Upload, Image as ImageIcon, Zap, CheckCircle, AlertCircle, Loader, XCircle, AlertTriangle, Settings, Wifi, Video, WifiOff, RefreshCw, Globe, Clock, HardDrive, Zap as ZapIcon, Cpu } from 'lucide-react'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -3125,8 +3024,8 @@ interface RaspberryDevice {
   stream_url_public?: string
   tunnel_type?:  string
   capabilities:  string[]
-  connected_at:  string
-  last_seen_ago:  number
+  connected_at: string
+  last_seen_ago: number
   has_photo?: boolean
   last_photo_time?: string
   last_photo_url?: string
@@ -3298,7 +3197,7 @@ const Pruebas = () => {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // 🚀 CAPTURAR FOTO - OPTIMIZADO
+  // CAPTURAR FOTO
   // ═══════════════════════════════════════════════════════════════════════════
 
   const captureAndAnalyzeFromRaspberry = async (deviceId: string) => {
@@ -3307,19 +3206,16 @@ const Pruebas = () => {
     setSelectedDevice(deviceId)
 
     try {
-      console.log(`📸 Solicitando captura a ${deviceId}...`)
-
       const cmdResponse = await fetch(`${API_URL}/api/rpi/capture/${deviceId}`, {
         method: 'POST',
-        headers: { 'Content-Type':  'application/json' },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ resolution: '1920x1080', format: 'jpg' })
       })
 
-      if (!cmdResponse.ok) {
+      if (! cmdResponse.ok) {
         throw new Error('Error al enviar comando al Raspberry Pi')
       }
 
-      console.log('✅ Comando enviado, esperando foto...')
       await new Promise(resolve => setTimeout(resolve, 5000))
 
       let photoBlob: Blob | null = null
@@ -3330,8 +3226,6 @@ const Pruebas = () => {
         attempts++
         const timestamp = Date.now()
         const photoUrl = `${API_URL}/api/rpi/latest-photo/${deviceId}?t=${timestamp}`
-        
-        console.log(`📥 Intento ${attempts}/${maxAttempts}`)
 
         try {
           const photoResponse = await fetch(photoUrl, {
@@ -3345,7 +3239,6 @@ const Pruebas = () => {
 
           if (photoResponse.ok) {
             photoBlob = await photoResponse.blob()
-            console.log(`✅ Foto descargada (${photoBlob.size} bytes)`)
             break
           } else {
             await new Promise(resolve => setTimeout(resolve, 1000))
@@ -3380,19 +3273,12 @@ const Pruebas = () => {
       setResult(null)
       setProcessedImage(null)
 
-      console.log('✅ Foto lista para análisis')
-
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al capturar desde Raspberry Pi')
-      console.error('❌ Error:', err)
     } finally {
       setIsCapturingFromRaspi(false)
     }
   }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 🆕 VER ÚLTIMA FOTO
-  // ═══════════════════════════════════════════════════════════════════════════
 
   const viewLastPhoto = async (deviceId: string) => {
     try {
@@ -3426,10 +3312,8 @@ const Pruebas = () => {
       setProcessedImage(null)
       setSelectedDevice(deviceId)
 
-      console.log('✅ Última foto cargada')
     } catch (err) {
       setError('Error al cargar la última foto')
-      console.error('❌ Error:', err)
     }
   }
 
@@ -3443,8 +3327,6 @@ const Pruebas = () => {
     setSelectedDevice(deviceId)
 
     try {
-      console.log(`🎬 Iniciando streaming en ${deviceId}...`)
-
       const response = await fetch(`${API_URL}/api/rpi/streaming/start/${deviceId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
@@ -3454,7 +3336,6 @@ const Pruebas = () => {
         throw new Error('Error al iniciar streaming')
       }
 
-      console.log('✅ Comando de inicio enviado')
       await new Promise(resolve => setTimeout(resolve, 12000))
       
       for (let i = 0; i < 3; i++) {
@@ -3464,7 +3345,7 @@ const Pruebas = () => {
 
       const updatedDevice = raspberryDevices.find(d => d.device_id === deviceId)
 
-      if (!updatedDevice) {
+      if (! updatedDevice) {
         throw new Error('Dispositivo no encontrado')
       }
 
@@ -3472,15 +3353,12 @@ const Pruebas = () => {
 
       if (updatedDevice.stream_url_public) {
         finalStreamUrl = updatedDevice.stream_url_public
-        console.log('✅ Usando FRP Tunnel:', finalStreamUrl)
       } else if (updatedDevice.stream_url_local) {
         finalStreamUrl = updatedDevice.stream_url_local
-        console.log('⚠️ Usando URL local:', finalStreamUrl)
       } else {
         const localIp = updatedDevice.ip_local
         const port = updatedDevice.stream_port || 8889
         finalStreamUrl = `http://${localIp}:${port}/cam`
-        console.log('⚠️ Construyendo URL manual:', finalStreamUrl)
       }
 
       if (! finalStreamUrl || finalStreamUrl.includes('undefined')) {
@@ -3490,10 +3368,7 @@ const Pruebas = () => {
       setStreamUrl(finalStreamUrl)
       setIsStreamActive(true)
 
-      console.log('✅ Streaming activo:', finalStreamUrl)
-
     } catch (err) {
-      console.error('❌ Error al iniciar streaming:', err)
       setError(`No se pudo iniciar el streaming: ${err instanceof Error ? err.message : 'Error desconocido'}`)
     } finally {
       setIsStartingStream(false)
@@ -3521,7 +3396,6 @@ const Pruebas = () => {
       await loadRaspberryDevices()
 
     } catch (err) {
-      console.error('❌ Error al detener streaming:', err)
       setError('No se pudo detener el streaming')
     } finally {
       setIsStoppingStream(false)
@@ -3579,7 +3453,6 @@ const Pruebas = () => {
         }
       }, 100)
     } catch (err) {
-      console.error('Error al acceder a la cámara:', err)
       setError('No se pudo acceder a la cámara.Verifica los permisos.')
     }
   }
@@ -3617,7 +3490,7 @@ const Pruebas = () => {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // 🚀 ANALIZAR IMAGEN - CON DUAL MODEL SUPPORT
+  // 🆕 ANALIZAR IMAGEN CON DUAL MODEL
   // ═══════════════════════════════════════════════════════════════════════════
 
   const analyzeImage = async () => {
@@ -3627,12 +3500,12 @@ const Pruebas = () => {
     }
 
     // 🆕 VALIDAR MODELO DISPONIBLE
-    if (!backendHealth) {
+    if (! backendHealth) {
       setError('No se pudo verificar el estado del backend')
       return
     }
 
-    if (selectedModel === 'legacy' && !backendHealth.models.legacy.loaded) {
+    if (selectedModel === 'legacy' && ! backendHealth.models.legacy.loaded) {
       setError('Modelo Legacy no disponible.Selecciona Custom.')
       return
     }
@@ -3652,8 +3525,6 @@ const Pruebas = () => {
       formData.append('image', selectedFile)
       formData.append('use_tta', useTTA.toString())
       formData.append('model', selectedModel)  // 🆕 ENVIAR MODELO SELECCIONADO
-
-      console.log(`📤 Enviando imagen con modelo:  ${selectedModel.toUpperCase()}`)
 
       const response = await fetch(`${API_URL}/api/predict`, {
         method: 'POST',
@@ -3683,8 +3554,6 @@ const Pruebas = () => {
         const fullUrl = `${API_URL}${data.imagen_overlay_url}?t=${timestamp}`
         setProcessedImage(fullUrl)
       }
-
-      console.log(`✅ Análisis completado con modelo ${data.procesamiento?.model_used?.toUpperCase()}`)
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido al analizar la imagen')
@@ -3726,7 +3595,7 @@ const Pruebas = () => {
         return 'text-green-400'
       case 'sin grietas':
         return 'text-slate-400'
-      default:
+      default: 
         return 'text-slate-400'
     }
   }
@@ -3779,8 +3648,8 @@ const Pruebas = () => {
 
   const getOrientacionColor = (orientacion: string) => {
     switch (orientacion) {
-      case 'horizontal': return 'bg-blue-500/20 text-blue-400 border-blue-500/30'
-      case 'vertical': return 'bg-red-500/20 text-red-400 border-red-500/30'
+      case 'horizontal':  return 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+      case 'vertical':  return 'bg-red-500/20 text-red-400 border-red-500/30'
       case 'diagonal':  return 'bg-orange-500/20 text-orange-400 border-orange-500/30'
       case 'irregular': return 'bg-purple-500/20 text-purple-400 border-purple-500/30'
       default: return 'bg-slate-500/20 text-slate-400 border-slate-500/30'
@@ -3788,7 +3657,7 @@ const Pruebas = () => {
   }
 
   const safeToFixed = (value: number | undefined, decimals: number = 2): string => {
-    return value !== undefined && value !== null ?  value.toFixed(decimals) : '0.00'
+    return value !== undefined && value !== null ? value.toFixed(decimals) : '0.00'
   }
 
   // 🆕 OBTENER INFO DEL MODELO
@@ -3797,13 +3666,15 @@ const Pruebas = () => {
       return {
         name: 'Legacy',
         color: 'from-blue-500 to-indigo-600',
-        desc: 'SMP UnetPlusPlus + EfficientNet-B8'
+        desc: 'SMP UnetPlusPlus + EfficientNet-B8',
+        icon: '🔵'
       }
     } else {
       return {
-        name:  'Custom',
-        color:  'from-purple-500 to-pink-600',
-        desc: 'UNet++ + CBAM + ConvNeXt-Base'
+        name: 'Custom',
+        color: 'from-purple-500 to-pink-600',
+        desc: 'UNet++ + CBAM + ConvNeXt-Base',
+        icon: '🟣'
       }
     }
   }
@@ -3834,8 +3705,9 @@ const Pruebas = () => {
               🤖 Dual Model Support:  Legacy (UNet++ B8) + Custom (UNet++ CBAM ConvNeXt) • TTA • Análisis Morfológico • Raspberry Pi • FRP • Multipart
             </p>
 
-            {/* 🆕 SELECTOR DE MODELO */}
+            {/* 🆕 CONTROLES SUPERIORES */}
             <div className="mt-8 flex flex-wrap justify-center gap-4">
+              {/* 🆕 SELECTOR DE MODELO */}
               <div className="inline-flex items-center gap-4 bg-slate-800/50 border border-slate-700 rounded-full px-6 py-3">
                 <Cpu className="w-5 h-5 text-slate-400" />
                 <span className="text-slate-300 font-medium">Modelo IA</span>
@@ -3853,10 +3725,10 @@ const Pruebas = () => {
                   </button>
                   <button
                     onClick={() => setSelectedModel('custom')}
-                    disabled={!backendHealth?.models.custom.loaded}
-                    className={`px-4 py-2 rounded-full text-sm font-semibold transition-all disabled:opacity-30 disabled:cursor-not-allowed ${
+                    disabled={! backendHealth?.models.custom.loaded}
+                    className={`px-4 py-2 rounded-full text-sm font-semibold transition-all disabled: opacity-30 disabled:cursor-not-allowed ${
                       selectedModel === 'custom'
-                        ?  'bg-gradient-to-r from-purple-500 to-pink-600 text-white shadow-lg shadow-purple-500/50'
+                        ? 'bg-gradient-to-r from-purple-500 to-pink-600 text-white shadow-lg shadow-purple-500/50'
                         : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                     }`}
                   >
@@ -3865,18 +3737,19 @@ const Pruebas = () => {
                 </div>
               </div>
 
+              {/* TTA TOGGLE */}
               <div className="inline-flex items-center gap-4 bg-slate-800/50 border border-slate-700 rounded-full px-6 py-3">
                 <Settings className="w-5 h-5 text-slate-400" />
                 <span className="text-slate-300 font-medium">Test-Time Augmentation</span>
                 <button
                   onClick={() => setUseTTA(!useTTA)}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                    useTTA ? 'bg-cyan-500' : 'bg-slate-600'
+                    useTTA ?  'bg-cyan-500' : 'bg-slate-600'
                   }`}
                 >
                   <span
                     className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      useTTA ? 'translate-x-6' : 'translate-x-1'
+                      useTTA ?  'translate-x-6' : 'translate-x-1'
                     }`}
                   />
                 </button>
@@ -3885,6 +3758,7 @@ const Pruebas = () => {
                 </span>
               </div>
 
+              {/* RASPBERRY PI BUTTON */}
               <button
                 onClick={() => {
                   setShowRaspberryPanel(! showRaspberryPanel)
@@ -3909,7 +3783,7 @@ const Pruebas = () => {
             {/* 🆕 INFO BACKEND HEALTH */}
             {backendHealth && (
               <div className="mt-6 max-w-2xl mx-auto bg-slate-800/30 border border-slate-700 rounded-xl p-4">
-                <div className="flex items-center justify-center gap-6 text-sm">
+                <div className="flex items-center justify-center gap-6 text-sm flex-wrap">
                   <div className="flex items-center gap-2">
                     <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                     <span className="text-slate-300">Backend v{backendHealth.backend_version}</span>
@@ -3922,11 +3796,22 @@ const Pruebas = () => {
                   <div className="text-slate-300">
                     {backendHealth.photos_stored} fotos
                   </div>
+                  <div className="text-slate-500">•</div>
+                  <div className={`flex items-center gap-1 ${
+                    backendHealth.models.legacy.loaded && backendHealth.models.custom.loaded
+                      ? 'text-green-400'
+                      : 'text-yellow-400'
+                  }`}>
+                    <Cpu className="w-3 h-3" />
+                    {backendHealth.models.legacy.loaded && backendHealth.models.custom.loaded
+                      ? 'Ambos modelos activos'
+                      : `Solo ${backendHealth.models.default} disponible`}
+                  </div>
                 </div>
               </div>
             )}
 
-            {/* PANEL RASPBERRY PI - SIN CAMBIOS */}
+            {/* PANEL RASPBERRY PI - SIN CAMBIOS MAYORES */}
             {showRaspberryPanel && (
               <div className="mt-8 max-w-4xl mx-auto">
                 <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 rounded-2xl p-6">
@@ -3956,9 +3841,6 @@ const Pruebas = () => {
                     <div className="text-center py-8">
                       <WifiOff className="w-16 h-16 text-slate-600 mx-auto mb-4" />
                       <p className="text-slate-400">No hay dispositivos conectados</p>
-                      <p className="text-sm text-slate-500 mt-2">
-                        Inicia el cliente bash v5.0 en tu Raspberry Pi
-                      </p>
                     </div>
                   ) : (
                     <div className="grid gap-4">
@@ -3984,17 +3866,17 @@ const Pruebas = () => {
                               {device.stream_url_public && (
                                 <p className="text-xs text-cyan-400 mt-1 flex items-center gap-1">
                                   <Globe className="w-3 h-3" />
-                                  FRP Tunnel activo ({device.tunnel_type || 'frp'})
+                                  FRP Tunnel activo
                                 </p>
                               )}
                               
                               {device.has_photo && (
                                 <p className="text-xs text-green-400 mt-1 flex items-center gap-1">
                                   <HardDrive className="w-3 h-3" />
-                                  📸 Última foto:  {new Date(device.last_photo_time || '').toLocaleTimeString('es-PE')}
-                                  {device.last_photo_size_kb && ` • ${device.last_photo_size_kb}KB`}
+                                  Última foto:  {new Date(device.last_photo_time || '').toLocaleTimeString('es-PE')}
                                 </p>
                               )}
+                              
                               <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
                                 <Clock className="w-3 h-3" />
                                 Última conexión: hace {device.last_seen_ago}s
@@ -4006,22 +3888,11 @@ const Pruebas = () => {
                             </div>
                           </div>
 
-                          <div className="flex flex-wrap gap-2 mb-4">
-                            {device.capabilities.map((cap, idx) => (
-                              <span
-                                key={idx}
-                                className="bg-purple-500/20 text-purple-400 text-xs font-semibold px-3 py-1 rounded-full border border-purple-500/30"
-                              >
-                                {cap}
-                              </span>
-                            ))}
-                          </div>
-
                           <div className="grid grid-cols-3 gap-3">
                             <button
                               onClick={() => handleAuthForAction(device.device_id, 'capture')}
                               disabled={isCapturingFromRaspi}
-                              className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white py-3 px-4 rounded-xl font-semibold hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                              className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white py-3 px-4 rounded-xl font-semibold hover:scale-105 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                             >
                               {isCapturingFromRaspi && selectedDevice === device.device_id ?  (
                                 <Loader className="w-5 h-5 animate-spin" />
@@ -4034,7 +3905,7 @@ const Pruebas = () => {
                             {device.has_photo && (
                               <button
                                 onClick={() => viewLastPhoto(device.device_id)}
-                                className="bg-gradient-to-r from-emerald-500 to-green-600 text-white py-3 px-4 rounded-xl font-semibold hover: scale-105 transition-all flex items-center justify-center gap-2"
+                                className="bg-gradient-to-r from-emerald-500 to-green-600 text-white py-3 px-4 rounded-xl font-semibold hover:scale-105 transition-all flex items-center justify-center gap-2"
                               >
                                 <HardDrive className="w-5 h-5" />
                                 Ver Última
@@ -4046,14 +3917,14 @@ const Pruebas = () => {
                                 onClick={() => handleAuthForAction(device.device_id, 'stream')}
                                 disabled={isStartingStream || isStoppingStream}
                                 className={`py-3 px-4 rounded-xl font-semibold hover:scale-105 transition-all flex items-center justify-center gap-2 disabled:opacity-50 ${
-                                  device.streaming_active || (isStreamActive && selectedDevice === device.device_id)
+                                  isStreamActive && selectedDevice === device.device_id
                                     ? 'bg-red-500 hover:bg-red-600 text-white'
                                     : 'bg-gradient-to-r from-green-500 to-emerald-600 text-white'
                                 }`}
                               >
-                                {(isStartingStream || isStoppingStream) && selectedDevice === device.device_id ? (
+                                {(isStartingStream || isStoppingStream) && selectedDevice === device. device_id ? (
                                   <Loader className="w-5 h-5 animate-spin" />
-                                ) : device.streaming_active || (isStreamActive && selectedDevice === device.device_id) ? (
+                                ) : isStreamActive && selectedDevice === device.device_id ? (
                                   <>
                                     <XCircle className="w-5 h-5" />
                                     Detener
@@ -4068,47 +3939,33 @@ const Pruebas = () => {
                             )}
                           </div>
 
-                          {/* IFRAME STREAMING - SIN CAMBIOS */}
+                          {/* IFRAME STREAMING */}
                           {isStreamActive && streamUrl && selectedDevice === device.device_id && (
                             <div className="mt-4 bg-black rounded-xl overflow-hidden border border-purple-500/50">
-                              {streamUrl.includes('/cam') ? (
-                                <div className="relative w-full aspect-video bg-black flex items-center justify-center">
-                                  <iframe
-                                    key={streamUrl}
-                                    src={streamUrl}
-                                    className="w-full h-full absolute inset-0"
-                                    allow="camera; microphone; autoplay"
-                                    title={`Stream ${device.device_id}`}
-                                    sandbox="allow-scripts allow-same-origin allow-presentation"
-                                  />
-                                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                    <Loader className="w-12 h-12 text-purple-400 animate-spin" />
-                                  </div>
-                                </div>
-                              ) : (
+                              <div className="relative w-full aspect-video bg-black flex items-center justify-center">
                                 <iframe
                                   key={streamUrl}
                                   src={streamUrl}
-                                  className="w-full aspect-video"
+                                  className="w-full h-full absolute inset-0"
                                   allow="camera; microphone; autoplay"
                                   title={`Stream ${device.device_id}`}
                                   sandbox="allow-scripts allow-same-origin allow-presentation"
                                 />
-                              )}
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                  <Loader className="w-12 h-12 text-purple-400 animate-spin" />
+                                </div>
+                              </div>
                               
                               <div className="bg-slate-900 p-3 text-center">
                                 <p className="text-sm text-purple-400 font-semibold flex items-center justify-center gap-2">
                                   <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                                  STREAMING EN VIVO • WebRTC • MediaMTX
+                                  STREAMING EN VIVO • WebRTC
                                   {device.stream_url_public && (
                                     <span className="text-cyan-400 ml-2 flex items-center gap-1">
                                       <Globe className="w-3 h-3" />
                                       FRP Tunnel
                                     </span>
                                   )}
-                                </p>
-                                <p className="text-xs text-slate-500 mt-1 font-mono truncate">
-                                  {streamUrl}
                                 </p>
                               </div>
                             </div>
@@ -4126,7 +3983,7 @@ const Pruebas = () => {
               <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4">
                 <div className="bg-slate-900 rounded-2xl p-8 max-w-md w-full border border-slate-700">
                   <h3 className="text-xl font-bold text-white mb-4">Acceso a Raspberry Pi</h3>
-                  <p className="text-slate-400 mb-6">Ingresa la contraseña para acceder a la cámara/streaming</p>
+                  <p className="text-slate-400 mb-6">Ingresa la contraseña</p>
 
                   <input
                     type="password"
@@ -4168,7 +4025,7 @@ const Pruebas = () => {
 
           </div>
 
-          {/* ALERT ERROR - SIN CAMBIOS */}
+          {/* ALERT ERROR */}
           {error && (
             <div className="max-w-3xl mx-auto mb-8">
               <div className="relative group">
@@ -4188,7 +4045,7 @@ const Pruebas = () => {
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* COLUMNA IZQUIERDA:  CAPTURA - SIN CAMBIOS */}
+            {/* COLUMNA IZQUIERDA:  CAPTURA */}
             <div className="relative group">
               <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-blue-600/10 rounded-3xl blur-2xl opacity-0 group-hover:opacity-100 transition duration-500"></div>
               <div className="relative bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 rounded-3xl p-6 md:p-8 hover:border-cyan-500/50 transition-all duration-300">
@@ -4273,7 +4130,7 @@ const Pruebas = () => {
                     {/* 🆕 INFO MODELO SELECCIONADO */}
                     <div className={`mt-8 bg-gradient-to-r ${getModelBadge(selectedModel).color} bg-opacity-10 border border-cyan-500/30 rounded-2xl p-6`}>
                       <h4 className="font-semibold text-cyan-400 mb-4 flex items-center gap-2 text-lg">
-                        <Cpu className="w-6 h-6" />
+                        <span className="text-2xl">{getModelBadge(selectedModel).icon}</span>
                         Modelo Seleccionado:  {getModelBadge(selectedModel).name}
                       </h4>
                       <p className="text-sm text-slate-300 mb-4">{getModelBadge(selectedModel).desc}</p>
@@ -4284,19 +4141,15 @@ const Pruebas = () => {
                         </li>
                         <li className="flex items-start gap-2">
                           <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full mt-2 flex-shrink-0"></div>
-                          <span>Usa Raspberry Pi con FRP Tunnel para acceso global</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full mt-2 flex-shrink-0"></div>
                           <span>🚀 Backend v5.1:  Dual Model + Multipart (3× más rápido)</span>
                         </li>
                         <li className="flex items-start gap-2">
                           <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full mt-2 flex-shrink-0"></div>
-                          <span>El sistema detecta grietas y analiza su patrón morfológico</span>
+                          <span>Cambia entre Legacy y Custom según tus necesidades</span>
                         </li>
                         <li className="flex items-start gap-2">
                           <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full mt-2 flex-shrink-0"></div>
-                          <span>Recibe diagnóstico con causa probable y nivel de severidad</span>
+                          <span>Recibe diagnóstico con causa probable y severidad</span>
                         </li>
                       </ul>
                     </div>
@@ -4392,7 +4245,7 @@ const Pruebas = () => {
 
             {/* COLUMNA DERECHA: RESULTADOS */}
             <div className="space-y-6">
-              <div className="relative bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 rounded-3xl p-6 md: p-8">
+              <div className="relative bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 rounded-3xl p-6 md:p-8">
                 <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
                   <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-2 rounded-xl">
                     <ImageIcon className="w-6 h-6 text-white" />
@@ -4410,7 +4263,7 @@ const Pruebas = () => {
                       </h4>
                       <div className="space-y-4">
                         <div className="bg-slate-900/50 border border-blue-500/20 rounded-xl p-4">
-                          <p className="text-sm font-bold text-blue-400 mb-2">Legacy Model</p>
+                          <p className="text-sm font-bold text-blue-400 mb-2">🔵 Legacy Model</p>
                           <ul className="space-y-2 text-slate-300 text-sm">
                             <li className="flex items-start gap-2">
                               <CheckCircle className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
@@ -4428,7 +4281,7 @@ const Pruebas = () => {
                         </div>
 
                         <div className="bg-slate-900/50 border border-purple-500/20 rounded-xl p-4">
-                          <p className="text-sm font-bold text-purple-400 mb-2">Custom Model</p>
+                          <p className="text-sm font-bold text-purple-400 mb-2">🟣 Custom Model</p>
                           <ul className="space-y-2 text-slate-300 text-sm">
                             <li className="flex items-start gap-2">
                               <CheckCircle className="w-4 h-4 text-purple-400 flex-shrink-0 mt-0.5" />
@@ -4501,7 +4354,7 @@ const Pruebas = () => {
                         <li>• ✅ Health endpoint con estado de modelos</li>
                         <li>• ✅ Cache-busting con timestamp en URL</li>
                         <li>• ✅ Limpieza automática de archivos</li>
-                        <li>• Máx 5 fotos por dispositivo • Retención:  24h</li>
+                        <li>• Máx 5 fotos por dispositivo • Retención:   24h</li>
                       </ul>
                     </div>
 
@@ -4531,9 +4384,9 @@ const Pruebas = () => {
                           <div>
                             <p className="text-sm text-slate-400 font-medium">Modelo Utilizado</p>
                             <p className={`text-2xl font-black ${
-                              result.procesamiento.model_used === 'custom' ?  'text-purple-400' : 'text-blue-400'
+                              result.procesamiento.model_used === 'custom' ?   'text-purple-400' :  'text-blue-400'
                             }`}>
-                              {result.procesamiento.model_used.toUpperCase()}
+                              {result.procesamiento.  model_used. toUpperCase()}
                               {result.procesamiento.has_cbam && ' + CBAM'}
                             </p>
                           </div>
@@ -4552,7 +4405,7 @@ const Pruebas = () => {
                         <div>
                           <p className="text-sm text-slate-400 font-medium">Severidad</p>
                           <p className={`text-2xl font-black ${getSeveridadColor(result.metricas.severidad)}`}>
-                            {result.metricas.severidad.toUpperCase()}
+                            {result.metricas.severidad.  toUpperCase()}
                           </p>
                         </div>
                       </div>
@@ -4560,7 +4413,7 @@ const Pruebas = () => {
                         Estado: <span className="font-semibold">{result.metricas.estado}</span>
                       </p>
                       <p className="text-sm text-slate-300 mt-1">
-                        Confianza: <span className="font-semibold">{result.metricas.confianza.toFixed(1)}%</span>
+                        Confianza: <span className="font-semibold">{result. metricas.confianza.  toFixed(1)}%</span>
                       </p>
                     </div>
 
@@ -4569,16 +4422,16 @@ const Pruebas = () => {
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <p className="text-xs text-slate-500 mb-1">Grietas Detectadas</p>
-                          <p className="text-2xl font-bold text-cyan-400">{result.metricas.num_grietas_detectadas}</p>
+                          <p className="text-2xl font-bold text-cyan-400">{result.metricas. num_grietas_detectadas}</p>
                         </div>
                         <div>
                           <p className="text-xs text-slate-500 mb-1">Área Afectada</p>
-                          <p className="text-2xl font-bold text-orange-400">{result.metricas.porcentaje_grietas.toFixed(2)}%</p>
+                          <p className="text-2xl font-bold text-orange-400">{result.metricas.porcentaje_grietas.  toFixed(2)}%</p>
                         </div>
                         {result.metricas.longitud_total_px && (
                           <div>
                             <p className="text-xs text-slate-500 mb-1">Longitud Total</p>
-                            <p className="text-lg font-bold text-blue-400">{result.metricas.longitud_total_px.toFixed(0)} px</p>
+                            <p className="text-lg font-bold text-blue-400">{result.metricas.longitud_total_px. toFixed(0)} px</p>
                           </div>
                         )}
                         {result.metricas.ancho_promedio_px && (
@@ -4593,20 +4446,20 @@ const Pruebas = () => {
                     {result.metricas.analisis_morfologico && (
                       <div className="bg-gradient-to-br from-orange-500/10 to-red-500/10 border border-orange-500/30 rounded-2xl p-6">
                         <h4 className="font-bold text-orange-400 mb-4 text-lg flex items-center gap-2">
-                          {getPatronIcon(result.metricas.analisis_morfologico.patron_general)}
+                          {getPatronIcon(result.metricas.  analisis_morfologico.  patron_general)}
                           Análisis Morfológico
                         </h4>
                         
                         <div className="space-y-4">
                           <div>
                             <p className="text-sm text-slate-400 mb-1">Patrón Detectado</p>
-                            <p className="text-lg font-bold text-white">{result.metricas.analisis_morfologico.patron_general.replace('_', ' ').toUpperCase()}</p>
-                            <p className="text-sm text-slate-300 mt-2">{result.metricas.analisis_morfologico.descripcion_patron}</p>
+                            <p className="text-lg font-bold text-white">{result.metricas.  analisis_morfologico. patron_general.  replace('_', ' ').toUpperCase()}</p>
+                            <p className="text-sm text-slate-300 mt-2">{result.metricas. analisis_morfologico.descripcion_patron}</p>
                           </div>
 
                           <div className="bg-slate-900/50 border border-orange-500/20 rounded-xl p-4">
                             <p className="text-sm text-orange-400 font-semibold mb-2">⚠️ Causa Probable</p>
-                            <p className="text-sm text-slate-300">{result.metricas.analisis_morfologico.causa_probable}</p>
+                            <p className="text-sm text-slate-300">{result.  metricas.analisis_morfologico.causa_probable}</p>
                           </div>
 
                           <div className="bg-slate-900/50 border border-cyan-500/20 rounded-xl p-4">
@@ -4617,7 +4470,7 @@ const Pruebas = () => {
                           <div>
                             <p className="text-sm text-slate-400 mb-3">Distribución de Orientaciones</p>
                             <div className="grid grid-cols-2 gap-2">
-                              {Object.entries(result.metricas.analisis_morfologico.distribucion_orientaciones).map(([key, val]) => (
+                              {Object.entries(result.metricas.analisis_morfologico.  distribucion_orientaciones).map(([key, val]) => (
                                 <div key={key} className={`${getOrientacionColor(key)} border px-3 py-2 rounded-lg text-center`}>
                                   <p className="text-xs font-semibold uppercase">{key}</p>
                                   <p className="text-lg font-bold">{val}</p>
@@ -4626,15 +4479,15 @@ const Pruebas = () => {
                             </div>
                           </div>
 
-                          {result.metricas.analisis_morfologico.grietas_principales.length > 0 && (
+                          {result.metricas.analisis_morfologico.grietas_principales.  length > 0 && (
                             <div>
                               <p className="text-sm text-slate-400 mb-3">Grietas Principales ({result.metricas.analisis_morfologico.grietas_principales.length})</p>
                               <div className="space-y-2 max-h-48 overflow-y-auto">
-                                {result.metricas.analisis_morfologico.grietas_principales.slice(0, 5).map((grieta) => (
+                                {result.metricas.analisis_morfologico. grietas_principales.slice(0, 5).map((grieta) => (
                                   <div key={grieta.id} className="bg-slate-900/70 border border-slate-700 rounded-lg p-3 text-xs">
                                     <div className="flex items-center justify-between mb-2">
                                       <span className={`${getOrientacionColor(grieta.orientacion)} px-2 py-1 rounded-md font-semibold text-xs border`}>
-                                        {grieta.orientacion.toUpperCase()}
+                                        {grieta.orientacion.  toUpperCase()}
                                       </span>
                                       <span className="text-slate-400">Grieta #{grieta.id}</span>
                                     </div>
@@ -4668,25 +4521,25 @@ const Pruebas = () => {
                         <h4 className="font-bold text-slate-300 mb-4 text-lg">⚙️ Información de Procesamiento</h4>
                         <div className="space-y-2 text-sm text-slate-400">
                           <p>
-                            <span className="text-slate-500">Modelo: </span>{' '}
+                            <span className="text-slate-500">Modelo:  </span>{' '}
                             <span className={`font-semibold ${
-                              result.procesamiento.model_used === 'custom' ?  'text-purple-400' : 'text-blue-400'
+                              result.procesamiento.model_used === 'custom' ?   'text-purple-400' : 'text-blue-400'
                             }`}>
                               {result.procesamiento.model_used?.toUpperCase()}
                             </span>
                           </p>
-                          <p><span className="text-slate-500">Arquitectura:</span> <span className="text-white font-semibold">{result.procesamiento.architecture}</span></p>
-                          <p><span className="text-slate-500">Encoder:</span> <span className="text-white font-semibold">{result.procesamiento.encoder}</span></p>
+                          <p><span className="text-slate-500">Arquitectura: </span> <span className="text-white font-semibold">{result.  procesamiento.architecture}</span></p>
+                          <p><span className="text-slate-500">Encoder:</span> <span className="text-white font-semibold">{result. procesamiento.encoder}</span></p>
                           {result.procesamiento.has_cbam && (
                             <p><span className="text-slate-500">CBAM Attention:</span> <span className="text-purple-400 font-semibold">✓ Activado</span></p>
                           )}
                           <p><span className="text-slate-500">TTA:</span> <span className={result.procesamiento.tta_usado ? 'text-cyan-400' : 'text-slate-400'}>
-                            {result.procesamiento.tta_usado ? `✓ Activado (${result.procesamiento.tta_transforms}x)` : '✗ Desactivado'}
+                            {result.procesamiento.  tta_usado ? `✓ Activado (${result.procesamiento.tta_transforms}x)` : '✗ Desactivado'}
                           </span></p>
                           <p><span className="text-slate-500">Threshold:</span> <span className="text-white">{result.procesamiento.threshold}</span></p>
                           {result.procesamiento.original_dimensions && (
                             <p><span className="text-slate-500">Dimensiones originales:</span> <span className="text-white">
-                              {result.procesamiento.original_dimensions.width} × {result.procesamiento.original_dimensions.height} px
+                              {result.procesamiento.  original_dimensions.width} × {result.procesamiento. original_dimensions.height} px
                             </span></p>
                           )}
                         </div>
@@ -4696,7 +4549,7 @@ const Pruebas = () => {
                     <div className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/30 rounded-2xl p-6">
                       <h4 className="font-bold text-green-400 mb-3 text-lg">✅ Análisis Completado</h4>
                       <p className="text-sm text-slate-300 mb-3">
-                        El sistema ha detectado y clasificado las grietas en la estructura.
+                        El sistema ha detectado y clasificado las grietas en la estructura.  
                         Revisa las recomendaciones y considera una inspección profesional si es necesario.
                       </p>
                       <p className="text-xs text-slate-500">

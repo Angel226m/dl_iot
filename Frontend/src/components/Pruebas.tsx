@@ -3922,7 +3922,7 @@ const Pruebas = () => {
                                     : 'bg-gradient-to-r from-green-500 to-emerald-600 text-white'
                                 }`}
                               >
-                                {(isStartingStream || isStoppingStream) && selectedDevice === device. device_id ? (
+                                {(isStartingStream || isStoppingStream) && selectedDevice === device.device_id ? (
                                   <Loader className="w-5 h-5 animate-spin" />
                                 ) : isStreamActive && selectedDevice === device.device_id ? (
                                   <>
@@ -4386,7 +4386,7 @@ const Pruebas = () => {
                             <p className={`text-2xl font-black ${
                               result.procesamiento.model_used === 'custom' ?   'text-purple-400' :  'text-blue-400'
                             }`}>
-                              {result.procesamiento.  model_used. toUpperCase()}
+                              {result.procesamiento.model_used.toUpperCase()}
                               {result.procesamiento.has_cbam && ' + CBAM'}
                             </p>
                           </div>
@@ -4405,7 +4405,7 @@ const Pruebas = () => {
                         <div>
                           <p className="text-sm text-slate-400 font-medium">Severidad</p>
                           <p className={`text-2xl font-black ${getSeveridadColor(result.metricas.severidad)}`}>
-                            {result.metricas.severidad.  toUpperCase()}
+                            {result.metricas.severidad.toUpperCase()}
                           </p>
                         </div>
                       </div>
@@ -4413,7 +4413,7 @@ const Pruebas = () => {
                         Estado: <span className="font-semibold">{result.metricas.estado}</span>
                       </p>
                       <p className="text-sm text-slate-300 mt-1">
-                        Confianza: <span className="font-semibold">{result. metricas.confianza.  toFixed(1)}%</span>
+                        Confianza: <span className="font-semibold">{result.metricas.confianza.toFixed(1)}%</span>
                       </p>
                     </div>
 
@@ -4422,16 +4422,16 @@ const Pruebas = () => {
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <p className="text-xs text-slate-500 mb-1">Grietas Detectadas</p>
-                          <p className="text-2xl font-bold text-cyan-400">{result.metricas. num_grietas_detectadas}</p>
+                          <p className="text-2xl font-bold text-cyan-400">{result.metricas.num_grietas_detectadas}</p>
                         </div>
                         <div>
                           <p className="text-xs text-slate-500 mb-1">Área Afectada</p>
-                          <p className="text-2xl font-bold text-orange-400">{result.metricas.porcentaje_grietas.  toFixed(2)}%</p>
+                          <p className="text-2xl font-bold text-orange-400">{result.metricas.porcentaje_grietas.toFixed(2)}%</p>
                         </div>
                         {result.metricas.longitud_total_px && (
                           <div>
                             <p className="text-xs text-slate-500 mb-1">Longitud Total</p>
-                            <p className="text-lg font-bold text-blue-400">{result.metricas.longitud_total_px. toFixed(0)} px</p>
+                            <p className="text-lg font-bold text-blue-400">{result.metricas.longitud_total_px.toFixed(0)} px</p>
                           </div>
                         )}
                         {result.metricas.ancho_promedio_px && (
@@ -4446,20 +4446,20 @@ const Pruebas = () => {
                     {result.metricas.analisis_morfologico && (
                       <div className="bg-gradient-to-br from-orange-500/10 to-red-500/10 border border-orange-500/30 rounded-2xl p-6">
                         <h4 className="font-bold text-orange-400 mb-4 text-lg flex items-center gap-2">
-                          {getPatronIcon(result.metricas.  analisis_morfologico.  patron_general)}
+                          {getPatronIcon(result.metricas.analisis_morfologico.patron_general)}
                           Análisis Morfológico
                         </h4>
                         
                         <div className="space-y-4">
                           <div>
                             <p className="text-sm text-slate-400 mb-1">Patrón Detectado</p>
-                            <p className="text-lg font-bold text-white">{result.metricas.  analisis_morfologico. patron_general.  replace('_', ' ').toUpperCase()}</p>
-                            <p className="text-sm text-slate-300 mt-2">{result.metricas. analisis_morfologico.descripcion_patron}</p>
+                            <p className="text-lg font-bold text-white">{result.metricas.analisis_morfologico.patron_general.replace('_', ' ').toUpperCase()}</p>
+                            <p className="text-sm text-slate-300 mt-2">{result.metricas.analisis_morfologico.descripcion_patron}</p>
                           </div>
 
                           <div className="bg-slate-900/50 border border-orange-500/20 rounded-xl p-4">
                             <p className="text-sm text-orange-400 font-semibold mb-2">⚠️ Causa Probable</p>
-                            <p className="text-sm text-slate-300">{result.  metricas.analisis_morfologico.causa_probable}</p>
+                            <p className="text-sm text-slate-300">{result.metricas.analisis_morfologico.causa_probable}</p>
                           </div>
 
                           <div className="bg-slate-900/50 border border-cyan-500/20 rounded-xl p-4">
@@ -4470,7 +4470,7 @@ const Pruebas = () => {
                           <div>
                             <p className="text-sm text-slate-400 mb-3">Distribución de Orientaciones</p>
                             <div className="grid grid-cols-2 gap-2">
-                              {Object.entries(result.metricas.analisis_morfologico.  distribucion_orientaciones).map(([key, val]) => (
+                              {Object.entries(result.metricas.analisis_morfologico.distribucion_orientaciones).map(([key, val]) => (
                                 <div key={key} className={`${getOrientacionColor(key)} border px-3 py-2 rounded-lg text-center`}>
                                   <p className="text-xs font-semibold uppercase">{key}</p>
                                   <p className="text-lg font-bold">{val}</p>
@@ -4479,15 +4479,15 @@ const Pruebas = () => {
                             </div>
                           </div>
 
-                          {result.metricas.analisis_morfologico.grietas_principales.  length > 0 && (
+                          {result.metricas.analisis_morfologico.grietas_principales.length > 0 && (
                             <div>
                               <p className="text-sm text-slate-400 mb-3">Grietas Principales ({result.metricas.analisis_morfologico.grietas_principales.length})</p>
                               <div className="space-y-2 max-h-48 overflow-y-auto">
-                                {result.metricas.analisis_morfologico. grietas_principales.slice(0, 5).map((grieta) => (
+                                {result.metricas.analisis_morfologico.grietas_principales.slice(0, 5).map((grieta) => (
                                   <div key={grieta.id} className="bg-slate-900/70 border border-slate-700 rounded-lg p-3 text-xs">
                                     <div className="flex items-center justify-between mb-2">
                                       <span className={`${getOrientacionColor(grieta.orientacion)} px-2 py-1 rounded-md font-semibold text-xs border`}>
-                                        {grieta.orientacion.  toUpperCase()}
+                                        {grieta.orientacion.toUpperCase()}
                                       </span>
                                       <span className="text-slate-400">Grieta #{grieta.id}</span>
                                     </div>
@@ -4528,18 +4528,18 @@ const Pruebas = () => {
                               {result.procesamiento.model_used?.toUpperCase()}
                             </span>
                           </p>
-                          <p><span className="text-slate-500">Arquitectura: </span> <span className="text-white font-semibold">{result.  procesamiento.architecture}</span></p>
-                          <p><span className="text-slate-500">Encoder:</span> <span className="text-white font-semibold">{result. procesamiento.encoder}</span></p>
+                          <p><span className="text-slate-500">Arquitectura: </span> <span className="text-white font-semibold">{result.procesamiento.architecture}</span></p>
+                          <p><span className="text-slate-500">Encoder:</span> <span className="text-white font-semibold">{result.procesamiento.encoder}</span></p>
                           {result.procesamiento.has_cbam && (
                             <p><span className="text-slate-500">CBAM Attention:</span> <span className="text-purple-400 font-semibold">✓ Activado</span></p>
                           )}
                           <p><span className="text-slate-500">TTA:</span> <span className={result.procesamiento.tta_usado ? 'text-cyan-400' : 'text-slate-400'}>
-                            {result.procesamiento.  tta_usado ? `✓ Activado (${result.procesamiento.tta_transforms}x)` : '✗ Desactivado'}
+                            {result.procesamiento.tta_usado ? `✓ Activado (${result.procesamiento.tta_transforms}x)` : '✗ Desactivado'}
                           </span></p>
                           <p><span className="text-slate-500">Threshold:</span> <span className="text-white">{result.procesamiento.threshold}</span></p>
                           {result.procesamiento.original_dimensions && (
                             <p><span className="text-slate-500">Dimensiones originales:</span> <span className="text-white">
-                              {result.procesamiento.  original_dimensions.width} × {result.procesamiento. original_dimensions.height} px
+                              {result.procesamiento.original_dimensions.width} × {result.procesamiento.original_dimensions.height} px
                             </span></p>
                           )}
                         </div>
@@ -4549,7 +4549,7 @@ const Pruebas = () => {
                     <div className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/30 rounded-2xl p-6">
                       <h4 className="font-bold text-green-400 mb-3 text-lg">✅ Análisis Completado</h4>
                       <p className="text-sm text-slate-300 mb-3">
-                        El sistema ha detectado y clasificado las grietas en la estructura.  
+                        El sistema ha detectado y clasificado las grietas en la estructura.
                         Revisa las recomendaciones y considera una inspección profesional si es necesario.
                       </p>
                       <p className="text-xs text-slate-500">

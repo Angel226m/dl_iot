@@ -1,0 +1,71 @@
+services:
+  crackguard-backend:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile
+    container_name: crackguard-backend
+    environment:
+      - FLASK_ENV=production
+      - FLASK_APP=app.py
+      - MODEL_PATH=/app/model/best_model.pth # ← Cambiar esto
+      - PYTHONUNBUFFERED=1
+      - MAX_CONTENT_LENGTH=20971520
+      - CORS_ORIGIN=https://crackguard.angelproyect.com
+    ports:
+      - "127.0.0.1:5001:5000"
+    volumes:
+      - ./Backend/model:/app/model
+      - ./Backend/uploads:/app/uploads
+      - crackguard_results:/app/results
+    restart: unless-stopped
+    networks:
+      - backend-network
+      - crackguard-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:5000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+
+  crackguard-frontend:
+    build:
+      context: ./Frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=/api
+    container_name: crackguard-frontend
+    ports:
+      - "127.0.0.1:3001:80"
+    depends_on:
+      crackguard-backend:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - frontend-network
+      - crackguard-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  crackguard-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.32.0.0/16
+
+  backend-network:
+    external: true
+    name: sistema-tours_backend-network
+
+  frontend-network:
+    external: true
+    name: sistema-tours_frontend-network
+
+volumes:
+  crackguard_results:
+    driver: local

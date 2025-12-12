@@ -1,0 +1,59 @@
+# 1. Descargar FRP Server
+cd /opt
+wget https://github.com/fatedier/frp/releases/download/v0.59.0/frp_0.59.0_linux_amd64.tar.gz
+
+# 2. Descomprimir
+tar -xzf frp_0.59.0_linux_amd64.tar.gz
+mv frp_0.59.0_linux_amd64 frp
+cd frp
+
+# 3.  Crear configuración del servidor
+cat > frps.toml << 'EOF'
+# FRP Server Config - CrackGuard Stream
+bindAddr = "0.0.0.0"
+bindPort = 7000
+
+# Dashboard (opcional)
+webServer.addr = "0.0.0.0"
+webServer.port = 7500
+webServer.user = "admin"
+webServer. password = "crackguard2206"
+
+# Autenticación
+auth.method = "token"
+auth.token = "crackguard_secret_token_2206"
+
+# Logs
+log.to = "/var/log/frps.log"
+log.level = "info"
+log.maxDays = 3
+
+# Límites
+transport.maxPoolCount = 10
+EOF
+
+# 4. Crear servicio systemd
+cat > /etc/systemd/system/frps.service << 'EOF'
+[Unit]
+Description=FRP Server for CrackGuard Streaming
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/frp
+ExecStart=/opt/frp/frps -c /opt/frp/frps.toml
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# 5. Iniciar servicio
+systemctl daemon-reload
+systemctl enable frps
+systemctl start frps
+
+# 6. Verificar estado
+systemctl status frps

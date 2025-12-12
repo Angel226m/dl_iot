@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
 ═══════════════════════════════════════════════════════════════════════════
-CRACKGUARD BACKEND v5.1 - DUAL MODEL SUPPORT 🚀
-✅ Soporte para 2 modelos: Legacy (SMP UnetPlusPlus) + Custom (UNet++ CBAM)
-✅ Selección de modelo vía parámetro 'model' en /api/predict
+CRACKGUARD BACKEND v6.0 - DUAL MODEL (MULTIPART OPTIMIZADO) 🚀
+✅ Soporte para 2 modelos (best_model. pth y modelof.pth)
+✅ Selección dinámica de modelo por request
 ✅ Subida de fotos con multipart/form-data (3× más rápido que base64)
 ✅ Sin túnel Cloudflare (FRP directo)
 ✅ Limpieza automática de fotos antiguas
@@ -26,6 +26,7 @@ from albumentations.pytorch import ToTensorV2
 import segmentation_models_pytorch as smp
 from datetime import datetime, timedelta
 import traceback
+import base64
 from scipy.ndimage import binary_fill_holes
 from collections import Counter
 from functools import lru_cache
@@ -46,7 +47,7 @@ app = Flask(__name__)
 
 CORS(app, resources={
     r"/*": {
-        "origins":  ["*"],
+        "origins": ["*"],
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         "allow_headers": ["Content-Type", "Authorization", "Accept"],
         "expose_headers": ["Content-Type", "Content-Length", "ETag"]
@@ -57,30 +58,36 @@ class Config:
     UPLOAD_FOLDER = '/app/uploads'
     
     # 🆕 DUAL MODEL PATHS
-    MODEL_PATH_LEGACY = os.getenv('MODEL_PATH_LEGACY', '/app/model/best_model.pth')
-    MODEL_PATH_CUSTOM = os.getenv('MODEL_PATH_CUSTOM', '/app/model/modelof.pth')
-    DEFAULT_MODEL = os.getenv('DEFAULT_MODEL', 'legacy')  # 'legacy' o 'custom'
+    MODEL_1_PATH = os.getenv('MODEL_1_PATH', '/app/model/best_model.pth')
+    MODEL_2_PATH = os.getenv('MODEL_2_PATH', '/app/model/modelof.pth')
     
     MAX_CONTENT_LENGTH = 50 * 1024 * 1024
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'bmp', 'tiff', 'tif'}
 
-    # Legacy model config
-    LEGACY_ARCHITECTURE = 'UnetPlusPlus'
-    LEGACY_ENCODER = 'timm-efficientnet-b8'
-    
-    # Custom model config
-    CUSTOM_ENCODER = 'convnext_base.fb_in22k_ft_in1k'
-    CUSTOM_USE_CBAM = True
-    
-    TARGET_SIZE = 640
-    MEAN = [0.485, 0.456, 0.406]
-    STD = [0.229, 0.224, 0.225]
+    # MODELO 1 (UnetPlusPlus + EfficientNet-B8)
+    MODEL_1_ARCHITECTURE = 'UnetPlusPlus'
+    MODEL_1_ENCODER = 'timm-efficientnet-b8'
+    MODEL_1_TARGET_SIZE = 640
+    MODEL_1_MEAN = [0.485, 0.456, 0.406]
+    MODEL_1_STD = [0.229, 0.224, 0.225]
+
+    # MODELO 2 (UNet++ + ConvNeXt-Base + CBAM)
+    MODEL_2_ARCHITECTURE = 'UNetPlusPlus+CBAM'
+    MODEL_2_ENCODER = 'convnext_base.fb_in22k_ft_in1k'
+    MODEL_2_TARGET_SIZE = 640
+    MODEL_2_MEAN = [0.485, 0.456, 0.406]
+    MODEL_2_STD = [0.229, 0.224, 0.225]
+    MODEL_2_USE_CBAM = True
 
     THRESHOLD = 0.5
     MIN_CRACK_COVERAGE = 0.25
 
-    USE_TTA = True
-    TTA_TRANSFORMS = ['original', 'hflip', 'vflip', 'rotate90', 'rotate180', 'rotate270']
+    # TTA MODELO 1
+    MODEL_1_USE_TTA = True
+    MODEL_1_TTA_TRANSFORMS = ['original', 'hflip', 'vflip', 'rotate90', 'rotate180', 'rotate270']
+
+    # MODELO 2 (SIN TTA)
+    MODEL_2_USE_TTA = False
 
     USE_MORPHOLOGY = True
     USE_CONNECTED_COMPONENTS = True
@@ -104,6 +111,7 @@ class Config:
     JPEG_QUALITY = 92
     USE_JPEG_OUTPUT = False
 
+    # OPTIMIZACIÓN MULTIPART
     DEVICE_HEARTBEAT_TIMEOUT = 30
     DEVICE_CHECK_INTERVAL = 10
     MAX_PHOTOS_PER_DEVICE = 5
@@ -121,7 +129,23 @@ torch.set_num_interop_threads(config.TORCH_THREADS)
 cv2.setNumThreads(config.CV2_THREADS)
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 🆕 CUSTOM UNET++ ARCHITECTURE (CBAM)
+# VARIABLES GLOBALES
+# ═══════════════════════════════════════════════════════════════════════════
+
+connected_devices = {}
+device_commands = {}
+device_lock = threading.Lock()
+
+latest_photos_metadata = {}
+
+# 🆕 DUAL MODELS
+model_1 = None
+model_2 = None
+model_1_loaded = False
+model_2_loaded = False
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 🔧 ARQUITECTURA MODELO 2 (CBAM + UNet++)
 # ═══════════════════════════════════════════════════════════════════════════
 
 class CBAM(nn.Module):
@@ -149,6 +173,7 @@ class CBAM(nn.Module):
         spatial_att = self.sigmoid(self.conv(torch.cat([avg_out, max_out], dim=1)))
         return x * spatial_att
 
+
 class ConvBlock(nn.Module):
     def __init__(self, in_channels, out_channels, use_attention=True):
         super(ConvBlock, self).__init__()
@@ -160,7 +185,7 @@ class ConvBlock(nn.Module):
             nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True)
         )
-        if use_attention and config.CUSTOM_USE_CBAM: 
+        if use_attention and config.MODEL_2_USE_CBAM:  
             self.attention = CBAM(out_channels)
         else:
             self.attention = nn.Identity()
@@ -168,10 +193,12 @@ class ConvBlock(nn.Module):
     def forward(self, x):
         return self.attention(self.conv(x))
 
-class CustomUNetPlusPlus(nn.Module):
-    """Custom UNet++ with CBAM"""
+
+class UNetPlusPlusModel(nn.Module):
+    """UNet++ COMPLETO con CBAM (Modelo 2)"""
+    
     def __init__(self, encoder_name='convnext_base.fb_in22k_ft_in1k', deep_supervision=False):
-        super(CustomUNetPlusPlus, self).__init__()
+        super(UNetPlusPlusModel, self).__init__()
         self.deep_supervision = deep_supervision
 
         self.stem = nn.Sequential(
@@ -263,47 +290,39 @@ class CustomUNetPlusPlus(nn.Module):
             output3 = F.interpolate(self.final3(X0_3), size=orig_size, mode='bilinear', align_corners=False)
             output4 = F.interpolate(self.final4(X0_4), size=orig_size, mode='bilinear', align_corners=False)
             return [output1, output2, output3, output4], cls_out
-        else: 
+        else:
             output = F.interpolate(self.final4(X0_4), size=orig_size, mode='bilinear', align_corners=False)
             return output, cls_out
 
 # ═══════════════════════════════════════════════════════════════════════════
-# VARIABLES GLOBALES
-# ═══════════════════════════════════════════════════════════════════════════
-
-connected_devices = {}
-device_commands = {}
-device_lock = threading.Lock()
-latest_photos_metadata = {}
-
-# 🆕 DUAL MODEL SUPPORT
-model_legacy = None
-model_custom = None
-model_legacy_loaded = False
-model_custom_loaded = False
-
-# ═══════════════════════════════════════════════════════════════════════════
-# LIMPIEZA AUTOMÁTICA
+# 🧹 LIMPIEZA AUTOMÁTICA DE FOTOS
 # ═══════════════════════════════════════════════════════════════════════════
 
 def cleanup_old_photos():
+    """Borrar fotos antiguas y mantener solo las últimas N por dispositivo"""
     while True:
         time.sleep(config.CLEANUP_INTERVAL)
+
         try:
             now = datetime.now()
             retention_time = timedelta(hours=config.PHOTO_RETENTION_HOURS)
+
             all_photos = glob.glob(os.path.join(config.UPLOAD_FOLDER, '*.jpg'))
             all_photos.extend(glob.glob(os.path.join(config.UPLOAD_FOLDER, '*.jpeg')))
-            all_photos.extend(glob.glob(os.path.join(config.UPLOAD_FOLDER, '*.png')))
+            all_photos.extend(glob.glob(os.path. join(config.UPLOAD_FOLDER, '*.png')))
 
             device_photos = {}
             temp_files = []
 
             for photo in all_photos:
                 basename = os.path.basename(photo)
+
                 if basename.startswith('overlay_') or basename.startswith('input_'):
                     file_time = datetime.fromtimestamp(os.path.getmtime(photo))
-                    temp_files.append({'path': photo, 'time': file_time})
+                    temp_files.append({
+                        'path': photo,
+                        'time': file_time
+                    })
                     continue
 
                 parts = basename.split('_')
@@ -316,18 +335,24 @@ def cleanup_old_photos():
                     device_photos[device_id] = []
 
                 file_time = datetime.fromtimestamp(os.path.getmtime(photo))
-                device_photos[device_id].append({'path': photo, 'time':  file_time})
+                device_photos[device_id].append({
+                    'path': photo,
+                    'time': file_time
+                })
 
             deleted_count = 0
 
             for device_id, photos in device_photos.items():
                 photos.sort(key=lambda x: x['time'], reverse=True)
+
                 for idx, photo_info in enumerate(photos):
                     photo_age = now - photo_info['time']
+
                     if photo_age > retention_time or idx >= config.MAX_PHOTOS_PER_DEVICE:
                         try:
                             os.remove(photo_info['path'])
                             deleted_count += 1
+
                             if device_id in latest_photos_metadata:
                                 if latest_photos_metadata[device_id].get('filepath') == photo_info['path']: 
                                     del latest_photos_metadata[device_id]
@@ -342,7 +367,7 @@ def cleanup_old_photos():
                         os.remove(temp_file['path'])
                         deleted_count += 1
                     except Exception as e: 
-                        print(f"⚠️ Error borrando temp {temp_file['path']}:  {e}")
+                        print(f"⚠️ Error borrando temp {temp_file['path']}: {e}")
 
             if deleted_count > 0:
                 print(f"🧹 Limpieza:  {deleted_count} archivos eliminados")
@@ -350,12 +375,21 @@ def cleanup_old_photos():
         except Exception as e:
             print(f"❌ Error en cleanup_old_photos: {e}")
 
+cleanup_photos_thread = threading.Thread(target=cleanup_old_photos, daemon=True)
+cleanup_photos_thread.start()
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 🧹 LIMPIEZA DE DISPOSITIVOS OFFLINE
+# ═══════════════════════════════════════════════════════════════════════════
+
 def cleanup_offline_devices():
     while True:
         time.sleep(config.DEVICE_CHECK_INTERVAL)
+
         with device_lock:
             now = time.time()
             offline_devices = []
+
             for device_id, info in list(connected_devices.items()):
                 last_seen = info.get('last_seen', 0)
                 if now - last_seen > config.DEVICE_HEARTBEAT_TIMEOUT:
@@ -363,6 +397,7 @@ def cleanup_offline_devices():
                     del connected_devices[device_id]
                     if device_id in device_commands:
                         del device_commands[device_id]
+
             if offline_devices:
                 print(f"🧹 Dispositivos offline: {offline_devices}")
 
@@ -370,15 +405,17 @@ cleanup_thread = threading.Thread(target=cleanup_offline_devices, daemon=True)
 cleanup_thread.start()
 
 # ═══════════════════════════════════════════════════════════════════════════
-# UTILIDADES
+# 🔧 UTILIDADES
 # ═══════════════════════════════════════════════════════════════════════════
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in config.ALLOWED_EXTENSIONS
 
 def calculate_etag(filepath):
-    if not config.ENABLE_ETAG: 
+    """Generar ETag basado en contenido del archivo"""
+    if not config.ENABLE_ETAG:
         return None
+
     try:
         with open(filepath, 'rb') as f:
             file_hash = hashlib.md5(f.read()).hexdigest()
@@ -387,27 +424,27 @@ def calculate_etag(filepath):
         return None
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 🆕 CARGAR MODELOS DUAL
+# 🆕 CARGAR MODELOS DUALES
 # ═══════════════════════════════════════════════════════════════════════════
 
-def cargar_modelo_legacy():
-    """Cargar modelo Legacy (SMP UnetPlusPlus)"""
-    global model_legacy, model_legacy_loaded
+def cargar_modelo_1():
+    """Cargar Modelo 1: UNet++ + EfficientNet-B8 (CON TTA)"""
+    global model_1, model_1_loaded
     try:
-        print(f"🤖 Cargando modelo LEGACY: {config.LEGACY_ARCHITECTURE} {config.LEGACY_ENCODER}...")
-        if not os.path.exists(config.MODEL_PATH_LEGACY):
-            print(f"   ⚠️ Modelo no encontrado: {config.MODEL_PATH_LEGACY}")
+        print(f"🤖 Cargando MODELO 1: {config.MODEL_1_ARCHITECTURE} + {config.MODEL_1_ENCODER}...")
+        if not os.path.exists(config.MODEL_1_PATH):
+            print(f"   ⚠️ Modelo 1 no encontrado: {config.MODEL_1_PATH}")
             return False
 
-        model_legacy = smp.UnetPlusPlus(
-            encoder_name=config.LEGACY_ENCODER,
+        model_1 = smp.UnetPlusPlus(
+            encoder_name=config.MODEL_1_ENCODER,
             encoder_weights=None,
             in_channels=3,
             classes=1,
             activation=None,
         )
 
-        checkpoint = torch.load(config.MODEL_PATH_LEGACY, map_location=config.DEVICE, weights_only=False)
+        checkpoint = torch.load(config.MODEL_1_PATH, map_location=config.DEVICE, weights_only=False)
 
         if isinstance(checkpoint, dict):
             if 'swa_model_state_dict' in checkpoint: 
@@ -421,69 +458,71 @@ def cargar_modelo_legacy():
         else:
             state_dict = checkpoint
 
-        model_legacy.load_state_dict(state_dict, strict=False)
-        model_legacy = model_legacy.to(config.DEVICE)
-        model_legacy.eval()
+        model_1.load_state_dict(state_dict, strict=False)
+        model_1 = model_1.to(config.DEVICE)
+        model_1.eval()
 
         if config.DEVICE.type == 'cpu':
             torch.set_grad_enabled(False)
 
-        print(f"   ✅ Modelo LEGACY cargado en {config.DEVICE}")
-        model_legacy_loaded = True
+        print(f"   ✅ Modelo 1 cargado en {config.DEVICE}")
+        model_1_loaded = True
         return True
 
     except Exception as e:
-        print(f"❌ Error cargando modelo LEGACY: {e}")
+        print(f"❌ Error cargando modelo 1: {e}")
         traceback.print_exc()
         return False
 
-def cargar_modelo_custom():
-    """Cargar modelo Custom (UNet++ CBAM)"""
-    global model_custom, model_custom_loaded
+
+def cargar_modelo_2():
+    """Cargar Modelo 2: UNet++ + ConvNeXt-Base + CBAM (SIN TTA)"""
+    global model_2, model_2_loaded
     try:
-        print(f"🤖 Cargando modelo CUSTOM: UNet++ + CBAM {config.CUSTOM_ENCODER}...")
-        if not os.path.exists(config.MODEL_PATH_CUSTOM):
-            print(f"   ⚠️ Modelo no encontrado:  {config.MODEL_PATH_CUSTOM}")
+        print(f"🤖 Cargando MODELO 2: {config.MODEL_2_ARCHITECTURE} + {config.MODEL_2_ENCODER}...")
+        if not os.path.exists(config.MODEL_2_PATH):
+            print(f"   ⚠️ Modelo 2 no encontrado: {config.MODEL_2_PATH}")
             return False
 
-        model_custom = CustomUNetPlusPlus(encoder_name=config.CUSTOM_ENCODER, deep_supervision=False)
+        model_2 = UNetPlusPlusModel(config.MODEL_2_ENCODER, deep_supervision=False)
 
-        checkpoint = torch.load(config.MODEL_PATH_CUSTOM, map_location=config.DEVICE, weights_only=False)
+        checkpoint = torch.load(config.MODEL_2_PATH, map_location=config.DEVICE, weights_only=False)
 
         if isinstance(checkpoint, dict):
             state_dict = checkpoint.get('model_state_dict', checkpoint)
         else:
             state_dict = checkpoint
 
-        missing, unexpected = model_custom.load_state_dict(state_dict, strict=False)
+        missing, unexpected = model_2.load_state_dict(state_dict, strict=False)
         
         if missing:
-            print(f"   ⚠️ Claves faltantes: {len(missing)}")
+            print(f"   ⚠️ Claves faltantes:  {len(missing)}")
         if unexpected:
             print(f"   ⚠️ Claves inesperadas:  {len(unexpected)}")
 
-        model_custom = model_custom.to(config.DEVICE)
-        model_custom.eval()
+        model_2 = model_2.to(config.DEVICE)
+        model_2.eval()
 
-        if config.DEVICE.type == 'cpu':
+        if config.DEVICE.type == 'cpu': 
             torch.set_grad_enabled(False)
 
-        print(f"   ✅ Modelo CUSTOM cargado en {config.DEVICE}")
-        model_custom_loaded = True
+        print(f"   ✅ Modelo 2 cargado en {config.DEVICE}")
+        model_2_loaded = True
         return True
 
     except Exception as e:
-        print(f"❌ Error cargando modelo CUSTOM: {e}")
+        print(f"❌ Error cargando modelo 2: {e}")
         traceback.print_exc()
         return False
 
 # ═══════════════════════════════════════════════════════════════════════════
-# API REST - RASPBERRY PI (sin cambios)
+# ✅ API REST - RASPBERRY PI
 # ═══════════════════════════════════════════════════════════════════════════
 
 @app.route('/api/rpi/register', methods=['POST', 'OPTIONS'])
 def rpi_register():
-    if request.method == 'OPTIONS': 
+    """Raspberry Pi se registra"""
+    if request.method == 'OPTIONS':
         return jsonify({'status': 'ok'}), 200
 
     try:
@@ -495,7 +534,7 @@ def rpi_register():
         stream_port = data.get('stream_port', 8889)
         tunnel_type = data.get('tunnel', 'frp')
 
-        if not device_id: 
+        if not device_id:
             return jsonify({'error': 'device_id requerido'}), 400
 
         with device_lock:
@@ -523,8 +562,9 @@ def rpi_register():
         return jsonify({
             'status': 'registered',
             'device_id':  device_id,
-            'backend_version': '5.1',
+            'backend_version': '6.0',
             'upload_method': 'multipart',
+            'available_models': ['model_1', 'model_2'],
             'timestamp': datetime.now().isoformat()
         }), 200
 
@@ -535,8 +575,9 @@ def rpi_register():
 
 @app.route('/api/rpi/heartbeat', methods=['POST', 'OPTIONS'])
 def rpi_heartbeat():
-    if request.method == 'OPTIONS': 
-        return jsonify({'status':  'ok'}), 200
+    """Heartbeat + comandos pendientes"""
+    if request.method == 'OPTIONS':
+        return jsonify({'status': 'ok'}), 200
 
     try:
         data = request.get_json()
@@ -546,7 +587,7 @@ def rpi_heartbeat():
         if not device_id or device_id not in connected_devices: 
             return jsonify({'error':  'No registrado'}), 404
 
-        with device_lock:
+        with device_lock: 
             connected_devices[device_id]['last_seen'] = time.time()
             connected_devices[device_id]['streaming_active'] = streaming_status
 
@@ -568,6 +609,7 @@ def rpi_heartbeat():
 
 @app.route('/api/rpi/photo', methods=['POST', 'OPTIONS'])
 def rpi_upload_photo():
+    """🚀 Recibir foto con multipart/form-data (3× MÁS RÁPIDO)"""
     if request.method == 'OPTIONS':
         return jsonify({'status': 'ok'}), 200
 
@@ -589,7 +631,7 @@ def rpi_upload_photo():
             return jsonify({'error': 'Nombre de archivo vacío'}), 400
 
         if '.' in file.filename:
-            original_ext = file.filename.rsplit('.', 1)[1].lower()
+            original_ext = file.filename.rsplit('.',1)[1].lower()
         else:
             original_ext = 'jpg'
 
@@ -642,8 +684,9 @@ def rpi_upload_photo():
 
 @app.route('/api/rpi/latest-photo/<device_id>', methods=['GET', 'OPTIONS'])
 def get_latest_photo(device_id):
-    if request.method == 'OPTIONS':
-        return jsonify({'status': 'ok'}), 200
+    """Ver última foto - devuelve archivo directamente CON ETAG"""
+    if request.method == 'OPTIONS': 
+        return jsonify({'status':  'ok'}), 200
 
     try:
         if device_id not in latest_photos_metadata:
@@ -684,11 +727,12 @@ def get_latest_photo(device_id):
 
 @app.route('/api/rpi/latest-photo-info/<device_id>', methods=['GET', 'OPTIONS'])
 def get_latest_photo_info(device_id):
-    if request.method == 'OPTIONS':
-        return jsonify({'status': 'ok'}), 200
+    """Obtener solo metadata de la última foto"""
+    if request.method == 'OPTIONS': 
+        return jsonify({'status':  'ok'}), 200
 
     try:
-        if device_id not in latest_photos_metadata: 
+        if device_id not in latest_photos_metadata:
             return jsonify({'error': 'No hay foto'}), 404
 
         photo_info = latest_photos_metadata[device_id].copy()
@@ -701,12 +745,13 @@ def get_latest_photo_info(device_id):
         }), 200
 
     except Exception as e: 
-        print(f"❌ Error latest_photo_info:  {e}")
-        return jsonify({'error': str(e)}), 500
+        print(f"❌ Error latest_photo_info: {e}")
+        return jsonify({'error':  str(e)}), 500
 
 @app.route('/api/rpi/devices', methods=['GET', 'OPTIONS'])
 def list_devices():
-    if request.method == 'OPTIONS':
+    """Lista dispositivos conectados"""
+    if request.method == 'OPTIONS': 
         return jsonify({'status': 'ok'}), 200
 
     try:
@@ -745,18 +790,19 @@ def list_devices():
         }), 200
 
     except Exception as e:
-        print(f"❌ Error list_devices:  {e}")
+        print(f"❌ Error list_devices: {e}")
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/rpi/streaming/start/<device_id>', methods=['POST', 'OPTIONS'])
 def start_streaming(device_id):
+    """Iniciar streaming"""
     if request.method == 'OPTIONS':
         return jsonify({'status': 'ok'}), 200
 
     try:
-        if device_id not in connected_devices: 
-            return jsonify({'error':  'Dispositivo no encontrado'}), 404
+        if device_id not in connected_devices:
+            return jsonify({'error': 'Dispositivo no encontrado'}), 404
 
         command = {
             'action': 'start_streaming',
@@ -783,12 +829,13 @@ def start_streaming(device_id):
 
 @app.route('/api/rpi/streaming/stop/<device_id>', methods=['POST', 'OPTIONS'])
 def stop_streaming(device_id):
+    """Detener streaming"""
     if request.method == 'OPTIONS':
         return jsonify({'status': 'ok'}), 200
 
     try:
-        if device_id not in connected_devices: 
-            return jsonify({'error':  'Dispositivo no encontrado'}), 404
+        if device_id not in connected_devices:
+            return jsonify({'error': 'Dispositivo no encontrado'}), 404
 
         command = {
             'action': 'stop_streaming',
@@ -796,7 +843,7 @@ def stop_streaming(device_id):
             'timestamp': time.time()
         }
 
-        with device_lock:
+        with device_lock: 
             device_commands[device_id].append(command)
             connected_devices[device_id]['last_seen'] = time.time()
 
@@ -815,19 +862,20 @@ def stop_streaming(device_id):
 
 @app.route('/api/rpi/capture/<device_id>', methods=['POST', 'OPTIONS'])
 def send_capture_command(device_id):
+    """Capturar foto"""
     if request.method == 'OPTIONS':
         return jsonify({'status': 'ok'}), 200
 
     try:
-        if device_id not in connected_devices: 
-            return jsonify({'error':  'Dispositivo no encontrado'}), 404
+        if device_id not in connected_devices:
+            return jsonify({'error': 'Dispositivo no encontrado'}), 404
 
         data = request.get_json() if request.is_json else {}
         resolution = data.get('resolution', '1920x1080')
 
         command = {
             'action': 'capture',
-            'params': {
+            'params':  {
                 'resolution': resolution,
                 'format': 'jpg'
             },
@@ -853,6 +901,7 @@ def send_capture_command(device_id):
 
 @app.route('/api/rpi/stream-url', methods=['POST', 'OPTIONS'])
 def rpi_stream_url():
+    """Recibir URL del túnel FRP"""
     if request.method == 'OPTIONS':
         return jsonify({'status': 'ok'}), 200
 
@@ -870,7 +919,7 @@ def rpi_stream_url():
             return jsonify({'error':  'No registrado'}), 404
 
         with device_lock:
-            if stream_url: 
+            if stream_url:
                 connected_devices[device_id]['stream_url_public'] = stream_url
                 connected_devices[device_id]['tunnel_type'] = tunnel_type
             connected_devices[device_id]['streaming_active'] = streaming_active
@@ -880,10 +929,10 @@ def rpi_stream_url():
             print(f"\n🌐 URL pública actualizada: {device_id}")
             print(f"   {stream_url} ({tunnel_type})\n")
         else:
-            print(f"🛑 Streaming detenido: {device_id}")
+            print(f"🛑 Streaming detenido:  {device_id}")
 
         return jsonify({
-            'status': 'ok',
+            'status':  'ok',
             'device_id':  device_id,
             'streaming_active': streaming_active
         }), 200
@@ -893,44 +942,54 @@ def rpi_stream_url():
         return jsonify({'error': str(e)}), 500
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 🆕 API REST - DETECCIÓN IA CON DUAL MODEL
+# ✅ API REST - DETECCIÓN IA (DUAL MODEL)
 # ═══════════════════════════════════════════════════════════════════════════
 
 @app.route('/health', methods=['GET'])
 def health():
     return jsonify({
-        'status':  'healthy',
-        'models': {
-            'legacy': {'loaded': model_legacy_loaded, 'path': config.MODEL_PATH_LEGACY},
-            'custom': {'loaded': model_custom_loaded, 'path': config.MODEL_PATH_CUSTOM},
-            'default': config.DEFAULT_MODEL
-        },
+        'status': 'healthy',
+        'model_1_loaded': model_1_loaded,
+        'model_2_loaded':  model_2_loaded,
         'connected_devices': len(connected_devices),
-        'backend_version': '5.1',
+        'backend_version': '6.0',
         'upload_method': 'multipart',
         'photos_stored': len(latest_photos_metadata),
+        'available_models': {
+            'model_1': {
+                'loaded': model_1_loaded,
+                'architecture': config.MODEL_1_ARCHITECTURE,
+                'encoder': config.MODEL_1_ENCODER,
+                'tta': config.MODEL_1_USE_TTA
+            },
+            'model_2': {
+                'loaded': model_2_loaded,
+                'architecture': config.MODEL_2_ARCHITECTURE,
+                'encoder':  config.MODEL_2_ENCODER,
+                'tta': config.MODEL_2_USE_TTA
+            }
+        },
         'timestamp': datetime.now().isoformat()
     }), 200
 
 @app.route('/api/predict', methods=['POST', 'OPTIONS'])
 def predict():
-    """🆕 Análisis IA con selección de modelo"""
-    if request.method == 'OPTIONS': 
+    """🆕 Análisis IA de grietas - DUAL MODEL SUPPORT"""
+    if request.method == 'OPTIONS':
         return jsonify({'status': 'ok'}), 200
 
     try:
-        # 🆕 Detectar modelo solicitado
-        model_type = request.form.get('model', config.DEFAULT_MODEL).lower()
+        # 🆕 SELECCIÓN DE MODELO
+        selected_model = request.form.get('model', 'model_1')  # Por defecto modelo 1
         
-        if model_type not in ['legacy', 'custom']: 
-            return jsonify({'error':  f'Modelo inválido: {model_type}.Use "legacy" o "custom"'}), 400
+        if selected_model not in ['model_1', 'model_2']:
+            return jsonify({'error': 'Modelo inválido.Usar: model_1 o model_2'}), 400
 
-        # Verificar que el modelo esté cargado
-        if model_type == 'legacy' and not model_legacy_loaded: 
-            return jsonify({'error': 'Modelo Legacy no disponible'}), 503
+        if selected_model == 'model_1' and not model_1_loaded: 
+            return jsonify({'error':  'Modelo 1 no cargado'}), 503
         
-        if model_type == 'custom' and not model_custom_loaded:
-            return jsonify({'error': 'Modelo Custom no disponible'}), 503
+        if selected_model == 'model_2' and not model_2_loaded:
+            return jsonify({'error': 'Modelo 2 no cargado'}), 503
 
         if 'image' not in request.files:
             return jsonify({'error': 'No imagen'}), 400
@@ -939,7 +998,7 @@ def predict():
         if file.filename == '':
             return jsonify({'error': 'Nombre vacío'}), 400
 
-        use_tta = request.form.get('use_tta', 'true').lower() == 'true'
+        use_tta = request.form. get('use_tta', 'true').lower() == 'true'
 
         filename = secure_filename(file.filename)
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -947,20 +1006,35 @@ def predict():
         filepath = os.path.join(config.UPLOAD_FOLDER, filename)
         file.save(filepath)
 
-        print(f"\n📥 Procesando IA ({model_type.upper()}): {filename}")
+        print(f"📥 Procesando IA con {selected_model. upper()}:  {filename}")
 
-        # Seleccionar modelo
-        selected_model = model_legacy if model_type == 'legacy' else model_custom
+        # 🆕 PROCESAR CON MODELO SELECCIONADO
+        if selected_model == 'model_1':
+            img_original, pred_mask, confidence_map, original_dims = procesar_imagen_modelo1(
+                filepath, use_tta
+            )
+            model_info = {
+                'model': 'model_1',
+                'architecture': config.MODEL_1_ARCHITECTURE,
+                'encoder':  config.MODEL_1_ENCODER,
+                'tta_usado': use_tta,
+                'tta_transforms': len(config.MODEL_1_TTA_TRANSFORMS) if use_tta else 1
+            }
+        else: 
+            img_original, pred_mask, confidence_map, original_dims = procesar_imagen_modelo2(
+                filepath
+            )
+            model_info = {
+                'model': 'model_2',
+                'architecture': config.MODEL_2_ARCHITECTURE,
+                'encoder': config.MODEL_2_ENCODER,
+                'tta_usado':  False,
+                'cbam_enabled': config.MODEL_2_USE_CBAM
+            }
 
-        # Procesar imagen
-        img_original, pred_mask, confidence_map, original_dims = procesar_imagen(
-            filepath, use_tta, selected_model, model_type
-        )
-        
         overlay = crear_overlay(img_original, pred_mask)
         metricas = calcular_metricas(pred_mask, confidence_map)
 
-        # Guardar overlay
         overlay_filename, overlay_filepath = guardar_imagen_temp(overlay, prefix='overlay')
 
         response_data = {
@@ -969,48 +1043,43 @@ def predict():
             'imagen_overlay_url': f'/api/result-image/{overlay_filename}',
             'timestamp': datetime.now().isoformat(),
             'procesamiento':  {
-                'model_used': model_type,
-                'architecture': config.CUSTOM_ENCODER if model_type == 'custom' else config.LEGACY_ARCHITECTURE,
-                'encoder':  config.CUSTOM_ENCODER if model_type == 'custom' else config.LEGACY_ENCODER,
-                'has_cbam': config.CUSTOM_USE_CBAM if model_type == 'custom' else False,
-                'tta_usado': use_tta,
-                'tta_transforms': len(config.TTA_TRANSFORMS) if use_tta else 1,
+                **model_info,
                 'threshold': config.THRESHOLD,
-                'target_size': config.TARGET_SIZE,
+                'target_size': config.MODEL_1_TARGET_SIZE if selected_model == 'model_1' else config.MODEL_2_TARGET_SIZE,
                 'original_dimensions': {
                     'width': original_dims[0],
-                    'height': original_dims[1]
+                    'height':  original_dims[1]
                 }
             }
         }
 
-        # Borrar imagen de entrada
         os.remove(filepath)
 
         return jsonify(response_data), 200
 
-    except Exception as e: 
+    except Exception as e:
         print(f"❌ Error predict: {e}")
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/result-image/<filename>', methods=['GET', 'OPTIONS'])
 def get_result_image(filename):
-    if request.method == 'OPTIONS': 
-        return jsonify({'status':  'ok'}), 200
+    """Servir imagen procesada (overlay) - MULTIPART"""
+    if request.method == 'OPTIONS':
+        return jsonify({'status': 'ok'}), 200
 
     try:
-        if not filename.startswith('overlay_') or '..' in filename:
+        if not filename.startswith('overlay_') or '. .' in filename:
             return jsonify({'error': 'Nombre de archivo inválido'}), 400
 
-        filepath = os.path.join(config.UPLOAD_FOLDER, filename)
+        filepath = os.path. join(config.UPLOAD_FOLDER, filename)
 
         if not os.path.exists(filepath):
             return jsonify({'error': 'Archivo no encontrado'}), 404
 
         etag = calculate_etag(filepath)
 
-        client_etag = request.headers.get('If-None-Match')
+        client_etag = request.headers. get('If-None-Match')
         if config.ENABLE_ETAG and client_etag and etag: 
             if client_etag == etag:
                 return Response(status=304)
@@ -1026,7 +1095,7 @@ def get_result_image(filename):
         response.headers['Pragma'] = 'no-cache'
         response.headers['Expires'] = '0'
 
-        if etag: 
+        if etag:
             response.headers['ETag'] = etag
 
         return response
@@ -1036,7 +1105,7 @@ def get_result_image(filename):
         return jsonify({'error': str(e)}), 500
 
 # ═══════════════════════════════════════════════════════════════════════════
-# FUNCIONES IA (CON SOPORTE DUAL MODEL)
+# FUNCIONES IA - COMUNES
 # ═══════════════════════════════════════════════════════════════════════════
 
 def analizar_orientacion_grieta_mejorada(contour):
@@ -1104,7 +1173,7 @@ def clasificar_patron_global(contours, mask_binary):
 
     orientaciones = []
 
-    for idx in top_indices:
+    for idx in top_indices: 
         angle, tipo = analizar_orientacion_grieta_mejorada(contours[idx])
         if angle is not None:
             orientaciones.append(tipo)
@@ -1112,14 +1181,14 @@ def clasificar_patron_global(contours, mask_binary):
     if not orientaciones:
         return {
             'patron': 'superficial',
-            'descripcion': 'Grietas superficiales menores',
+            'descripcion':  'Grietas superficiales menores',
             'causa_probable': 'Desgaste superficial',
             'severidad_ajuste': 0.8,
-            'recomendacion':  'Monitoreo periódico'
+            'recomendacion': 'Monitoreo periódico'
         }
 
     tipo_counts = Counter(orientaciones)
-    tipo_dominante = tipo_counts.most_common(1)[0][0]
+    tipo_dominante = tipo_counts. most_common(1)[0][0]
     porcentaje_dominante = tipo_counts[tipo_dominante] / len(orientaciones)
     diversidad = len(tipo_counts)
 
@@ -1193,7 +1262,7 @@ def analizar_morfologia_detallada(mask, contours):
             'grietas_principales': []
         }
 
-    top_indices = indices_validos[np.argsort(longitudes[indices_validos])[-config.MAX_GRIETAS_ANALIZAR:]][: :-1]
+    top_indices = indices_validos[np. argsort(longitudes[indices_validos])[-config.MAX_GRIETAS_ANALIZAR:]][: :-1]
 
     grietas_detalle = []
     orientaciones_count = {"horizontal": 0, "vertical":  0, "diagonal": 0, "irregular": 0}
@@ -1226,17 +1295,18 @@ def analizar_morfologia_detallada(mask, contours):
         'descripcion_patron': patron_info['descripcion'],
         'causa_probable': patron_info['causa_probable'],
         'severidad_ajuste': patron_info['severidad_ajuste'],
-        'recomendacion': patron_info.get('recomendacion', 'Monitoreo'),
+        'recomendacion': patron_info. get('recomendacion', 'Monitoreo'),
         'distribucion_orientaciones': orientaciones_count,
         'num_grietas_analizadas': len(grietas_detalle),
         'grietas_principales': grietas_detalle[: 5]
     }
 
-@lru_cache(maxsize=1)
-def get_transform():
-    return A.Compose([
-        A.Resize(config.TARGET_SIZE, config.TARGET_SIZE, interpolation=cv2.INTER_CUBIC),
-        A.Normalize(mean=config.MEAN, std=config.STD),
+@lru_cache(maxsize=2)
+def get_transform(target_size, mean, std):
+    """Transform con caché para cada modelo"""
+    return A. Compose([
+        A. Resize(target_size, target_size, interpolation=cv2.INTER_CUBIC),
+        A. Normalize(mean=mean, std=std),
         ToTensorV2()
     ])
 
@@ -1249,7 +1319,7 @@ def advanced_postprocess(mask):
         mask_np = cv2.morphologyEx(mask_np, cv2.MORPH_OPEN, kernel)
 
     if config.USE_CONNECTED_COMPONENTS:
-        mask_binary = (mask_np > 0.5).astype(np.uint8)
+        mask_binary = (mask_np > 0. 5).astype(np.uint8)
         num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(mask_binary, connectivity=8)
 
         cleaned_mask = np.zeros_like(mask_np)
@@ -1262,132 +1332,7 @@ def advanced_postprocess(mask):
     mask_binary = (mask_np > 0.5).astype(bool)
     mask_filled = binary_fill_holes(mask_binary)
 
-    return mask_filled.astype(np.float32)
-
-def predict_with_tta(model, img_tensor, model_type='legacy'):
-    """🆕 TTA con soporte para ambos modelos"""
-    preds = []
-
-    with torch.no_grad():
-        if model_type == 'custom':
-            pred, _ = model(img_tensor)
-            if isinstance(pred, list):
-                pred = pred[-1]
-        else:
-            pred = model(img_tensor)
-        
-        pred = torch.sigmoid(pred)
-        preds.append(pred)
-
-    if 'hflip' in config.TTA_TRANSFORMS:
-        img_hflip = torch.flip(img_tensor, dims=[3])
-        with torch.no_grad():
-            if model_type == 'custom': 
-                pred, _ = model(img_hflip)
-                if isinstance(pred, list):
-                    pred = pred[-1]
-            else: 
-                pred = model(img_hflip)
-            pred = torch.sigmoid(pred)
-            pred = torch.flip(pred, dims=[3])
-            preds.append(pred)
-
-    if 'vflip' in config.TTA_TRANSFORMS:
-        img_vflip = torch.flip(img_tensor, dims=[2])
-        with torch.no_grad():
-            if model_type == 'custom':
-                pred, _ = model(img_vflip)
-                if isinstance(pred, list):
-                    pred = pred[-1]
-            else:
-                pred = model(img_vflip)
-            pred = torch.sigmoid(pred)
-            pred = torch.flip(pred, dims=[2])
-            preds.append(pred)
-
-    if 'rotate90' in config.TTA_TRANSFORMS:
-        img_rot90 = torch.rot90(img_tensor, k=1, dims=[2, 3])
-        with torch.no_grad():
-            if model_type == 'custom': 
-                pred, _ = model(img_rot90)
-                if isinstance(pred, list):
-                    pred = pred[-1]
-            else:
-                pred = model(img_rot90)
-            pred = torch.sigmoid(pred)
-            pred = torch.rot90(pred, k=-1, dims=[2, 3])
-            preds.append(pred)
-
-    if 'rotate180' in config.TTA_TRANSFORMS:
-        img_rot180 = torch.rot90(img_tensor, k=2, dims=[2, 3])
-        with torch.no_grad():
-            if model_type == 'custom':
-                pred, _ = model(img_rot180)
-                if isinstance(pred, list):
-                    pred = pred[-1]
-            else:
-                pred = model(img_rot180)
-            pred = torch.sigmoid(pred)
-            pred = torch.rot90(pred, k=-2, dims=[2, 3])
-            preds.append(pred)
-
-    if 'rotate270' in config.TTA_TRANSFORMS:
-        img_rot270 = torch.rot90(img_tensor, k=3, dims=[2, 3])
-        with torch.no_grad():
-            if model_type == 'custom':
-                pred, _ = model(img_rot270)
-                if isinstance(pred, list):
-                    pred = pred[-1]
-            else: 
-                pred = model(img_rot270)
-            pred = torch.sigmoid(pred)
-            pred = torch.rot90(pred, k=-3, dims=[2, 3])
-            preds.append(pred)
-
-    return torch.stack(preds).mean(dim=0)
-
-def procesar_imagen(image_path, use_tta=True, model=None, model_type='legacy'):
-    """🆕 Procesar imagen con modelo seleccionado"""
-    if model is None:
-        raise RuntimeError("Modelo no especificado")
-
-    img = cv2.imread(str(image_path))
-    if img is None:
-        raise ValueError("No se pudo cargar la imagen")
-
-    h_orig, w_orig = img.shape[:2]
-    original_dimensions = (w_orig, h_orig)
-
-    if max(h_orig, w_orig) > config.MAX_IMAGE_DIMENSION:
-        scale = config.MAX_IMAGE_DIMENSION / max(h_orig, w_orig)
-        new_w = int(w_orig * scale)
-        new_h = int(h_orig * scale)
-        img = cv2.resize(img, (new_w, new_h), interpolation=cv2.INTER_AREA)
-
-    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    original_size = (img.shape[1], img.shape[0])
-
-    transform = get_transform()
-    img_tensor = transform(image=img_rgb)['image'].unsqueeze(0).to(config.DEVICE)
-
-    if use_tta:
-        pred = predict_with_tta(model, img_tensor, model_type)
-    else:
-        with torch.no_grad():
-            if model_type == 'custom': 
-                pred, _ = model(img_tensor)
-                if isinstance(pred, list):
-                    pred = pred[-1]
-            else:
-                pred = model(img_tensor)
-            pred = torch.sigmoid(pred)
-
-    confidence_map = pred.cpu().numpy()[0, 0]
-    confidence_map = cv2.resize(confidence_map, original_size, interpolation=cv2.INTER_LINEAR)
-    confidence_map = advanced_postprocess(torch.from_numpy(confidence_map))
-    pred_mask = (confidence_map > config.THRESHOLD).astype(np.uint8) * 255
-
-    return img_rgb, pred_mask, confidence_map, original_dimensions
+    return mask_filled. astype(np.float32)
 
 def crear_overlay(img_original, mask):
     mask_binary = (mask > 127).astype(np.uint8)
@@ -1396,13 +1341,13 @@ def crear_overlay(img_original, mask):
     if config.OVERLAY_COLOR == 'red':
         color_mask[: , :, 0] = mask_binary * 255
 
-    overlay = cv2.addWeighted(img_original, 1.0, color_mask, config.OVERLAY_ALPHA, 0)
+    overlay = cv2.addWeighted(img_original, 1. 0, color_mask, config.OVERLAY_ALPHA, 0)
     return overlay
 
 def calcular_metricas(mask, confidence_map):
     mask_binary = (mask > 127).astype(np.uint8)
 
-    total_pixeles = mask.size
+    total_pixeles = mask. size
     pixeles_positivos = mask_binary.sum()
     porcentaje_grietas = (pixeles_positivos / total_pixeles) * 100
 
@@ -1422,14 +1367,14 @@ def calcular_metricas(mask, confidence_map):
             'severidad':  "Sin Grietas",
             'estado': "Sin Grietas Significativas",
             'confianza': 95.0,
-            'confidence_max': float(confidence_map.max()),
-            'confidence_mean': float(confidence_map.mean()),
+            'confidence_max': float(confidence_map. max()),
+            'confidence_mean': float(confidence_map. mean()),
             'analisis_morfologico': None
         }
 
     longitudes = np.array([cv2.arcLength(cnt, False) for cnt in contours])
     total_length = longitudes.sum()
-    avg_length = longitudes.mean()
+    avg_length = longitudes. mean()
     max_length = longitudes.max()
     avg_width = pixeles_positivos / total_length if total_length > 0 else 0
 
@@ -1438,7 +1383,7 @@ def calcular_metricas(mask, confidence_map):
     severidad_ajuste = morfologia['severidad_ajuste']
     porcentaje_ajustado = porcentaje_grietas * severidad_ajuste
 
-    if porcentaje_ajustado < 1: 
+    if porcentaje_ajustado < 1:
         severidad = "Baja"
         estado = "Grietas Menores"
     elif porcentaje_ajustado < 5:
@@ -1464,7 +1409,7 @@ def calcular_metricas(mask, confidence_map):
         'pixeles_con_grietas': int(pixeles_positivos),
         'porcentaje_grietas': round(float(porcentaje_grietas), 2),
         'num_grietas_detectadas': int(num_contours),
-        'longitud_total_px': round(float(total_length), 2),
+        'longitud_total_px':  round(float(total_length), 2),
         'longitud_promedio_px': round(float(avg_length), 2),
         'longitud_maxima_px': round(float(max_length), 2),
         'ancho_promedio_px': round(float(avg_width), 2),
@@ -1473,27 +1418,175 @@ def calcular_metricas(mask, confidence_map):
         'confianza': round(confianza, 1),
         'confidence_max':  float(confidence_map.max()),
         'confidence_mean': float(confidence_map.mean()),
-        'analisis_morfologico':  morfologia
+        'analisis_morfologico': morfologia
     }
 
 def guardar_imagen_temp(img_rgb, prefix='overlay'):
-    """Guardar imagen procesada temporalmente"""
+    """Guardar imagen procesada temporalmente y devolver ruta"""
     img_bgr = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGR)
 
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_%f')
     filename = f"{prefix}_{timestamp}.jpg"
     filepath = os.path.join(config.UPLOAD_FOLDER, filename)
 
-    cv2.imwrite(filepath, img_bgr, [cv2.IMWRITE_JPEG_QUALITY, config.JPEG_QUALITY])
+    cv2.imwrite(filepath, img_bgr, [cv2.IMWRITE_JPEG_QUALITY, config. JPEG_QUALITY])
 
     return filename, filepath
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 🆕 FUNCIONES IA - MODELO 1 (CON TTA)
+# ═══════════════════════════════════════════════════════════════════════════
+
+def predict_with_tta_modelo1(model, img_tensor):
+    """TTA para Modelo 1"""
+    preds = []
+
+    with torch.no_grad():
+        pred = model(img_tensor)
+        pred = torch.sigmoid(pred)
+        preds.append(pred)
+
+    if 'hflip' in config.MODEL_1_TTA_TRANSFORMS:
+        img_hflip = torch.flip(img_tensor, dims=[3])
+        with torch.no_grad():
+            pred = model(img_hflip)
+            pred = torch.sigmoid(pred)
+            pred = torch.flip(pred, dims=[3])
+            preds.append(pred)
+
+    if 'vflip' in config. MODEL_1_TTA_TRANSFORMS:
+        img_vflip = torch.flip(img_tensor, dims=[2])
+        with torch.no_grad():
+            pred = model(img_vflip)
+            pred = torch.sigmoid(pred)
+            pred = torch.flip(pred, dims=[2])
+            preds.append(pred)
+
+    if 'rotate90' in config.MODEL_1_TTA_TRANSFORMS:
+        img_rot90 = torch.rot90(img_tensor, k=1, dims=[2, 3])
+        with torch.no_grad():
+            pred = model(img_rot90)
+            pred = torch.sigmoid(pred)
+            pred = torch. rot90(pred, k=-1, dims=[2, 3])
+            preds.append(pred)
+
+    if 'rotate180' in config.MODEL_1_TTA_TRANSFORMS: 
+        img_rot180 = torch.rot90(img_tensor, k=2, dims=[2, 3])
+        with torch.no_grad():
+            pred = model(img_rot180)
+            pred = torch.sigmoid(pred)
+            pred = torch.rot90(pred, k=-2, dims=[2, 3])
+            preds.append(pred)
+
+    if 'rotate270' in config.MODEL_1_TTA_TRANSFORMS:
+        img_rot270 = torch.rot90(img_tensor, k=3, dims=[2, 3])
+        with torch.no_grad():
+            pred = model(img_rot270)
+            pred = torch.sigmoid(pred)
+            pred = torch.rot90(pred, k=-3, dims=[2, 3])
+            preds.append(pred)
+
+    return torch.stack(preds).mean(dim=0)
+
+
+def procesar_imagen_modelo1(image_path, use_tta=True):
+    """Procesamiento con MODELO 1 (UNet++ + EfficientNet-B8 + TTA)"""
+    if not model_1_loaded:
+        raise RuntimeError("Modelo 1 no cargado")
+
+    img = cv2.imread(str(image_path))
+    if img is None:
+        raise ValueError("No se pudo cargar la imagen")
+
+    h_orig, w_orig = img.shape[:2]
+    original_dimensions = (w_orig, h_orig)
+
+    if max(h_orig, w_orig) > config.MAX_IMAGE_DIMENSION:
+        scale = config.MAX_IMAGE_DIMENSION / max(h_orig, w_orig)
+        new_w = int(w_orig * scale)
+        new_h = int(h_orig * scale)
+        img = cv2.resize(img, (new_w, new_h), interpolation=cv2.INTER_AREA)
+
+    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    original_size = (img. shape[1], img.shape[0])
+
+    transform = get_transform(
+        config.MODEL_1_TARGET_SIZE,
+        tuple(config.MODEL_1_MEAN),
+        tuple(config.MODEL_1_STD)
+    )
+    img_tensor = transform(image=img_rgb)['image']. unsqueeze(0).to(config. DEVICE)
+
+    if use_tta and config.MODEL_1_USE_TTA:
+        pred = predict_with_tta_modelo1(model_1, img_tensor)
+    else:
+        with torch.no_grad():
+            pred = model_1(img_tensor)
+            pred = torch.sigmoid(pred)
+
+    confidence_map = pred.cpu().numpy()[0, 0]
+    confidence_map = cv2.resize(confidence_map, original_size, interpolation=cv2.INTER_LINEAR)
+    confidence_map = advanced_postprocess(torch.from_numpy(confidence_map))
+    pred_mask = (confidence_map > config. THRESHOLD).astype(np.uint8) * 255
+
+    return img_rgb, pred_mask, confidence_map, original_dimensions
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 🆕 FUNCIONES IA - MODELO 2 (SIN TTA, CON CBAM)
+# ═══════════════════════════════════════════════════════════════════════════
+
+def procesar_imagen_modelo2(image_path):
+    """Procesamiento con MODELO 2 (UNet++ + ConvNeXt-Base + CBAM - SIN TTA)"""
+    if not model_2_loaded: 
+        raise RuntimeError("Modelo 2 no cargado")
+
+    img = cv2.imread(str(image_path))
+    if img is None:
+        raise ValueError("No se pudo cargar la imagen")
+
+    h_orig, w_orig = img.shape[:2]
+    original_dimensions = (w_orig, h_orig)
+
+    if max(h_orig, w_orig) > config.MAX_IMAGE_DIMENSION:
+        scale = config.MAX_IMAGE_DIMENSION / max(h_orig, w_orig)
+        new_w = int(w_orig * scale)
+        new_h = int(h_orig * scale)
+        img = cv2.resize(img, (new_w, new_h), interpolation=cv2.INTER_AREA)
+
+    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    original_size = (img.shape[1], img.shape[0])
+
+    transform = get_transform(
+        config.MODEL_2_TARGET_SIZE,
+        tuple(config.MODEL_2_MEAN),
+        tuple(config.MODEL_2_STD)
+    )
+    img_tensor = transform(image=img_rgb)['image'].unsqueeze(0).to(config.DEVICE)
+
+    # SIN TTA - inferencia directa
+    with torch.no_grad():
+        output, cls_output = model_2(img_tensor)
+        
+        # Si deep_supervision está activo, tomar la última salida
+        if isinstance(output, list):
+            output = output[-1]
+        
+        confidence_map_tensor = torch.sigmoid(output)
+        cls_prob = torch.sigmoid(cls_output)
+
+    confidence_map = confidence_map_tensor.cpu().numpy()[0, 0]
+    confidence_map = cv2.resize(confidence_map, original_size, interpolation=cv2.INTER_LINEAR)
+    confidence_map = advanced_postprocess(torch. from_numpy(confidence_map))
+    pred_mask = (confidence_map > config.THRESHOLD).astype(np.uint8) * 255
+
+    return img_rgb, pred_mask, confidence_map, original_dimensions
 
 # ═══════════════════════════════════════════════════════════════════════════
 # INICIALIZACIÓN
 # ═══════════════════════════════════════════════════════════════════════════
 
 print("\n" + "═" * 100)
-print("🚀 CRACKGUARD BACKEND v5.1 - DUAL MODEL SUPPORT")
+print("🚀 CRACKGUARD BACKEND v6.0 - DUAL MODEL SUPPORT")
 print("═" * 100)
 print(f"📡 URL: https://crackguard.angelproyect.com")
 print(f"⚡ Device: {config.DEVICE}")
@@ -1502,10 +1595,14 @@ print(f"🔒 Túnel:  FRP directo (sin Cloudflare)")
 print(f"🧹 Limpieza automática: Cada {config.CLEANUP_INTERVAL}s")
 print(f"📸 Max fotos/device: {config.MAX_PHOTOS_PER_DEVICE}")
 print(f"⏰ Retención fotos: {config.PHOTO_RETENTION_HOURS}h")
-print(f"\n🤖 DUAL MODEL SUPPORT:")
-print(f"   • LEGACY: {config.LEGACY_ARCHITECTURE} + {config.LEGACY_ENCODER}")
-print(f"   • CUSTOM: UNet++ CBAM + {config.CUSTOM_ENCODER}")
-print(f"   • DEFAULT: {config.DEFAULT_MODEL.upper()}")
+print(f"\n🤖 MODELOS DISPONIBLES:")
+print(f"   • MODELO 1: {config.MODEL_1_ARCHITECTURE} + {config.MODEL_1_ENCODER}")
+print(f"     └─ Path: {config.MODEL_1_PATH}")
+print(f"     └─ TTA: {'Activado' if config.MODEL_1_USE_TTA else 'Desactivado'}")
+print(f"   • MODELO 2: {config.MODEL_2_ARCHITECTURE} + {config.MODEL_2_ENCODER}")
+print(f"     └─ Path: {config.MODEL_2_PATH}")
+print(f"     └─ TTA:  {'Activado' if config. MODEL_2_USE_TTA else 'Desactivado'}")
+print(f"     └─ CBAM: {'Activado' if config.MODEL_2_USE_CBAM else 'Desactivado'}")
 print(f"\n📍 Endpoints:")
 print(f"   • POST /api/rpi/register")
 print(f"   • POST /api/rpi/heartbeat")
@@ -1516,34 +1613,41 @@ print(f"   • GET  /api/rpi/devices")
 print(f"   • POST /api/rpi/streaming/start/<id>")
 print(f"   • POST /api/rpi/streaming/stop/<id>")
 print(f"   • POST /api/rpi/capture/<id>")
-print(f"   • POST /api/predict (multipart) [Parámetro:  model=legacy|custom] 🆕")
+print(f"   • POST /api/predict (multipart) 🆕 [model=model_1|model_2]")
 print(f"   • GET  /health")
 print("═" * 100 + "\n")
 
-# 🆕 Cargar ambos modelos
-legacy_ok = cargar_modelo_legacy()
-custom_ok = cargar_modelo_custom()
+# Cargar ambos modelos
+print("🔄 Cargando modelos...")
+model_1_status = cargar_modelo_1()
+model_2_status = cargar_modelo_2()
 
-if legacy_ok: 
-    print("✅ Modelo LEGACY cargado")
+if model_1_status: 
+    print("✅ Modelo 1 cargado correctamente")
 else:
-    print("⚠️  Modelo LEGACY no disponible")
+    print("⚠️  Modelo 1 no disponible")
 
-if custom_ok:
-    print("✅ Modelo CUSTOM cargado")
+if model_2_status:
+    print("✅ Modelo 2 cargado correctamente")
 else:
-    print("⚠️  Modelo CUSTOM no disponible")
+    print("⚠️  Modelo 2 no disponible")
 
-if not legacy_ok and not custom_ok:
-    print("⚠️  Backend sin IA - Ningún modelo disponible")
+if not model_1_status and not model_2_status:
+    print("⚠️  Backend sin modelos IA (solo funciones de dispositivos)")
 else:
-    print(f"✅ Backend con IA - Modelo por defecto: {config.DEFAULT_MODEL.upper()}")
+    print(f"✅ Backend con {sum([model_1_status, model_2_status])} modelo(s) activo(s)")
 
 print("\n✅ Backend corriendo en 0.0.0.0:5000\n")
-
-# Iniciar thread de limpieza de fotos
-cleanup_photos_thread = threading.Thread(target=cleanup_old_photos, daemon=True)
-cleanup_photos_thread.start()
+print("═" * 100)
+print("📖 USO DE MODELOS:")
+print("   Para usar Modelo 1 (CON TTA):")
+print("     POST /api/predict")
+print("     FormData: image=<file>, model=model_1, use_tta=true")
+print("")
+print("   Para usar Modelo 2 (SIN TTA, CON CBAM):")
+print("     POST /api/predict")
+print("     FormData:  image=<file>, model=model_2")
+print("═" * 100 + "\n")
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
